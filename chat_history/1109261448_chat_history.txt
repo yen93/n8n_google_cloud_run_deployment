@@ -1,0 +1,149 @@
+================================================================================
+CHAT HISTORY EXPORT — 2026-09-11
+Session: Migrate local Docker n8n (52 workflows) to Google Cloud Run backed by a
+free Supabase Postgres, at ~$0 infra cost.
+================================================================================
+
+NOTE ON REDACTIONS: This session involved two live secrets pasted/echoed into the
+chat: (1) the n8n instance encryption key, read from D:\n8n_data\config, and
+(2) the Supabase database password / full connection string, supplied by the user
+via a file. Both have been replaced below with [REDACTED_ENCRYPTION_KEY] and
+[REDACTED_DB_PASSWORD] / [REDACTED_DB_CONNECTION_STRING]. The Supabase CA
+certificate chain also appeared but is a public certificate, not a secret, and is
+not redacted.
+
+--------------------------------------------------------------------------------
+USER:
+"i have n8n workflows locally running in this computer thru docker. container name
+is n8n_data. i need your help running them in google cloud run"
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Investigated the running setup. The actual container is named `n8n` (not
+`n8n_data`; that's the compose project). Found: n8n v2.22.6 on SQLite, bind-mounted
+at D:\n8n_data, database.sqlite grown to ~1.5GB (no execution pruning ever set).
+The encryption key lives in D:\n8n_data\config. 5 community node packages installed
+(@apify/n8n-nodes-apify — actively used; n8n-nodes-scrapingbee, n8n-nodes-syncmate,
+@apolloio/n8n-nodes-apollo, n8n-nodes-serpapi — installed but unused).
+
+Exported all workflows via `n8n export:workflow` into a scratchpad and analyzed
+them with Node: 52 workflows total, 13 active. ALL 13 active workflows are
+triggered exclusively by Schedule Trigger (cron) — zero webhooks. Credential types
+in use span ActiveCampaign, Gmail/Docs/Drive/Sheets/Chat OAuth2, DeepSeek, OpenAI,
+Monday, Twilio, Supabase, Postgres, plus header/bearer auth. No local-filesystem or
+exec nodes, so it's safe to run stateless on Cloud Run.
+
+Checked gcloud: authenticated as julienne@myadventuregroup.com.au, billing enabled.
+Entered plan mode and wrote a plan; asked the user a series of decisions.
+
+--------------------------------------------------------------------------------
+USER:
+Answered the planning questions:
+- Scheduling: "let's go with the option that will not cost anything... im fine
+  changing those triggers" (has another site on Cloud Run free tier).
+- DB migration: fresh Postgres + import workflows/credentials only (no history).
+- GCP project: pointed to a file containing project id -> claudegwscli-502400.
+- (Follow-up) DB hosting: chose Supabase free tier over Cloud SQL (no free tier).
+- (Follow-up) chose a NEW dedicated Supabase project, not the existing MAGTestProject.
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Confirmed claudegwscli-502400 already had run/artifactregistry/cloudbuild/
+secretmanager/cloudscheduler APIs enabled and an existing `dashboard` Cloud Run
+service in australia-southeast1. Finalized plan and exited plan mode.
+
+Dug deeper into the 13 active workflows' trigger wiring and found 29 LIVE schedule
+triggers total (not 13) — AC Caching alone had 13 same-time triggers; two workflows
+(Email Handling Agent, Action Items Automation) fired every minute. Flagged the
+Cloud Scheduler cost (~$2.60/mo for ~26 billable jobs) and the every-minute
+concern.
+
+--------------------------------------------------------------------------------
+USER:
+"remove all triggers. i can just manually reconfig them after. make sure we stay at
+zero costs" and "remove trigger for now. ill reconfig after".
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Disabled all 29 live Schedule Trigger nodes across the 13 workflows and set each
+workflow active=false (edited the exported JSON with Node). Deleted the
+now-unneeded webhook shared-secret.
+
+Provisioned infrastructure:
+- Created new free-tier Supabase project `n8n-production` (ref uwsncuowtzydylfabikj)
+  in ap-southeast-2 (Sydney), org zakkhdjcwkgxjppsjnyi, confirmed $0/month.
+- Created GCP Secret Manager secrets: n8n-encryption-key ([REDACTED_ENCRYPTION_KEY]),
+  supabase-db-password ([REDACTED_DB_PASSWORD]). User supplied the DB connection
+  string via a file ([REDACTED_DB_CONNECTION_STRING]); moved the password into the
+  secret and deleted the plaintext file.
+- Built a custom Docker image (Dockerfile: FROM n8nio/n8n:2.22.6 + nodes/package.json
+  with the 5 community packages, npm install at build). Verified locally all 5
+  packages present, pushed to Artifact Registry.
+
+Migration:
+- Ran a throwaway container pointed at Supabase with the original encryption key;
+  n8n ran its full migration chain against the fresh Postgres (took a few minutes
+  over the network).
+- Exported decrypted credentials from the live instance; imported 52 workflows and
+  26 credentials into Supabase. Verified via Supabase MCP: workflow_entity=52,
+  credentials_entity=26.
+- Supabase advisor flagged RLS disabled on all tables; user chose to enable it.
+  Applied ALTER TABLE ... ENABLE ROW LEVEL SECURITY on ~93 tables (n8n connects as
+  the postgres role which bypasses RLS, so it keeps working; this just closes the
+  auto REST API). Cleaned up the throwaway container and plaintext secret files.
+
+Deployment + debugging:
+- Deployed Cloud Run service `n8n` (min=0, max=1, port 8080) with DB env vars and
+  secrets. Initial deploy 503'd: "Database connection timed out".
+- Diagnosed methodically with throwaway Cloud Run jobs: raw TCP OK, psql OK, but
+  n8n timed out. Found Supabase's pooler presents a private CA not in Node's trust
+  store ("self-signed certificate in certificate chain"). Confirmed with pg tests
+  that rejectUnauthorized:false works but n8n ignores the
+  DB_POSTGRESDB_SSL_REJECT_UNAUTHORIZED=false env var (parses the string as truthy),
+  so it fell back to a plaintext connection the pooler never answers.
+- Fix 1: extracted Supabase's CA chain, stored it as secret `supabase-ca-cert`,
+  wired to DB_POSTGRESDB_SSL_CA. That enabled verified SSL — DB now connected, but
+  it flapped (timed out/recovered) and stayed 503 "Database is not ready!".
+- Proved with a 30s persistent-pool test (16 pings all ~5ms) that the pooler is
+  perfectly stable — so the flapping was Cloud Run CPU throttling freezing n8n's
+  background ping timer between requests, tripping its 5s ping race falsely.
+- Fix 2: set --no-cpu-throttling (CPU always allocated). Readiness went to a solid
+  200 across sustained polling; editor UI loads (title "n8n.io - Workflow
+  Automation"), /rest/settings shows showSetupOnFirstLoad:true (fresh owner setup).
+
+Cleaned up all diagnostic Cloud Run jobs (netcheck/pgcheck/sslcheck) and temp
+scripts. Wrote DEPLOYMENT.md runbook. Saved project/user/feedback memories.
+
+Flagged remaining manual to-dos to the user: create owner login; re-auth Google
+OAuth2 creds against the new URL; re-add triggers; keep the local n8n as backup;
+watch first-month usage since always-allocated CPU can edge past the free tier.
+
+--------------------------------------------------------------------------------
+USER:
+Interjected twice mid-work asking whether the migration was done / to check again,
+and once asked how to modify workflow nodes after migration.
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Explained that post-migration, workflows are edited the same way as before but via
+the Cloud Run URL instead of localhost:5678 — edits save straight to Supabase, no
+redeploy needed; disabled schedule triggers are re-enabled/reconfigured in the
+editor; expect a few seconds of cold-start on first request after idle. Reported
+migration progress at each check until both imports completed (52 workflows, 26
+credentials).
+
+--------------------------------------------------------------------------------
+USER:
+/dcp — document, commit, push.
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Removed a stray mangled-name PEM file left in the project root by an earlier failed
+write (public CA cert, already in Secret Manager). Created chat_history/, wrote this
+transcript (with the two live secrets redacted), created as_built.txt and CLAUDE.md,
+then initialized git with a .gitignore. Found no git remote configured — paused to
+ask the user for the remote URL before pushing.
+
+================================================================================
+END OF EXPORT
+================================================================================

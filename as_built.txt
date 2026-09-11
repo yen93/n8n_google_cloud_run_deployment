@@ -1,0 +1,52 @@
+================================================================================
+AS-BUILT — n8n on Google Cloud Run
+Last updated: 2026-09-11
+================================================================================
+
+CONTAINER IMAGE
+- Dockerfile — FROM n8nio/n8n:2.22.6, installs 5 community node packages
+  (nodes/package.json) into /home/node/.n8n/nodes at build time.
+  Built + pushed to:
+  australia-southeast1-docker.pkg.dev/claudegwscli-502400/cloud-run-source-deploy/n8n:2.22.6
+- nodes/package.json — pins @apify/n8n-nodes-apify, n8n-nodes-scrapingbee,
+  n8n-nodes-syncmate, @apolloio/n8n-nodes-apollo, n8n-nodes-serpapi.
+- .dockerignore — excludes .git, *.md, gpc_proj_id.txt.
+
+CLOUD RUN SERVICE
+- Service `n8n` in project claudegwscli-502400, region australia-southeast1.
+  URL: https://n8n-659687081407.australia-southeast1.run.app
+  Config: min-instances=0, max-instances=1, CPU always-allocated
+  (--no-cpu-throttling, REQUIRED — see CLAUDE.md), 1Gi mem / 1 CPU, port 8080,
+  --allow-unauthenticated.
+- Env: N8N_PORT=8080, N8N_PROTOCOL=https, N8N_HOST/WEBHOOK_URL = the run.app URL,
+  DB_TYPE=postgresdb + DB_POSTGRESDB_* (host = Supabase session pooler),
+  EXECUTIONS_DATA_PRUNE=true, EXECUTIONS_DATA_MAX_AGE=336 (14 days),
+  GENERIC_TIMEZONE=Australia/Sydney, N8N_COMMUNITY_PACKAGES_ENABLED=true.
+
+EXTERNAL INTEGRATIONS
+- Supabase Postgres (backend DB for n8n) — project `n8n-production`,
+  ref uwsncuowtzydylfabikj, region ap-southeast-2. Accessed via session pooler
+  aws-0-ap-southeast-2.pooler.supabase.com:5432, user postgres.uwsncuowtzydylfabikj,
+  SSL verified against Supabase CA. RLS enabled on all tables.
+- Google Cloud Secret Manager (project claudegwscli-502400):
+  - n8n-encryption-key — same key as old local instance; do NOT regenerate.
+  - supabase-db-password — Supabase DB password.
+  - supabase-ca-cert — Supabase CA chain, wired to DB_POSTGRESDB_SSL_CA.
+  All three granted to the compute service account (secretAccessor).
+
+DATA STORES
+- Supabase Postgres holds all n8n state: 52 workflows, 26 credentials (migrated
+  2026-09-11). Execution history is NOT migrated and is pruned after 14 days.
+- Old local SQLite (D:\n8n_data\database.sqlite, ~1.5GB) retained as backup.
+
+AUTOMATIONS / ROUTINES
+- None active. All 29 schedule triggers across the 13 formerly-active workflows
+  were disabled and workflows set inactive (to keep Cloud Scheduler cost at $0);
+  to be reconfigured manually in the n8n editor.
+
+OTHER
+- gpc_proj_id.txt — one-line file holding the GCP project id (claudegwscli-502400).
+- DEPLOYMENT.md — full runbook (resource IDs, gotchas, redeploy steps,
+  manual follow-ups).
+- chat_history/ — per-session narrative logs.
+================================================================================

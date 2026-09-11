@@ -1,0 +1,18 @@
+# Dependencies
+node_modules/
+
+# Secrets / credentials — never commit
+.env
+*.env
+*.pem
+*.key
+*.p12
+*.pfx
+*-service-account*.json
+*credentials*.json
+*connection_string*.txt
+*.secret
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db

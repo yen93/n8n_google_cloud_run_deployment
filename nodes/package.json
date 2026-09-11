@@ -1,0 +1,11 @@
+{
+  "name": "installed-nodes",
+  "private": true,
+  "dependencies": {
+    "@apify/n8n-nodes-apify": "0.7.0",
+    "n8n-nodes-scrapingbee": "0.1.6",
+    "n8n-nodes-syncmate": "1.1.4",
+    "@apolloio/n8n-nodes-apollo": "0.3.1",
+    "n8n-nodes-serpapi": "0.1.10"
+  }
+}
