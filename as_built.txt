@@ -17,8 +17,10 @@ CLOUD RUN SERVICE
   URL: https://n8n-659687081407.australia-southeast1.run.app
   Config: min-instances=0, max-instances=1, CPU always-allocated
   (--no-cpu-throttling, REQUIRED — see CLAUDE.md), 1Gi mem / 1 CPU, port 8080,
-  --allow-unauthenticated.
-- Env: N8N_PORT=8080, N8N_PROTOCOL=https, N8N_HOST/WEBHOOK_URL = the run.app URL,
+  request timeout 3600s, --allow-unauthenticated.
+- Env: N8N_PORT=8080, N8N_PROTOCOL=https, N8N_PROXY_HOPS=1,
+  N8N_ENDPOINT_HEALTH=/n8n-health (Cloud Run reserves /healthz — see CLAUDE.md),
+  N8N_HOST = the run.app hostname, WEBHOOK_URL = the run.app URL,
   DB_TYPE=postgresdb + DB_POSTGRESDB_* (host = Supabase session pooler),
   EXECUTIONS_DATA_PRUNE=true, EXECUTIONS_DATA_MAX_AGE=336 (14 days),
   GENERIC_TIMEZONE=Australia/Sydney, N8N_COMMUNITY_PACKAGES_ENABLED=true.

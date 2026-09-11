@@ -22,6 +22,10 @@
 ## Gotchas learned (important)
 - **CPU must stay always-allocated** (`--no-cpu-throttling`). With default throttling + scale-to-zero, n8n's background DB ping timer freezes between requests and its 5s ping race fires falsely → "Database is not ready!" 503s. Always-allocated CPU fixes it.
 - **SSL:** `DB_POSTGRESDB_SSL_REJECT_UNAUTHORIZED=false` does NOT work (n8n parses the string as truthy). Must provide the real CA via `DB_POSTGRESDB_SSL_CA`. Supabase uses a private CA not in Node's default trust store.
+- **Editor stuck "Offline / No network connection" (THE big one):** Google Cloud Run **reserves the exact path `/healthz` at its edge** and returns its own 404 — the request never reaches the container (confirmed: the unrelated `dashboard` service 404s on it too; the container serves `/healthz` fine locally; and a `/healthz` request never shows up in Cloud Run request logs). n8n's frontend heartbeat polls the health endpoint every 10s, gets 404, and declares the backend offline, which blocks saving.
+  **Fix: `N8N_ENDPOINT_HEALTH=/n8n-health`.** The frontend reads the path from `endpointHealth` in `/rest/settings` rather than hardcoding it, so this one env var moves both server and client off the reserved path. Verify: `curl <url>/n8n-health` -> `{"status":"ok"}`.
+  - Dead ends (don't repeat): `N8N_PATH=/n8n/` fixes the heartbeat but leaves REST and `/static/*` at root, so the editor renders blank. `N8N_PUSH_BACKEND=sse` breaks the push (same-origin EventSource sends no `Origin` header -> `500 Invalid origin!`); the default WebSocket was always fine (`GET 101`).
+- **Windows gotcha:** `gcloud` env-var values starting with `/` or containing `://` get mangled by Git Bash path conversion. Use PowerShell for those commands and read the value back with `gcloud run services describe` to confirm.
 
 ## Manual follow-ups still needed
 1. **Create owner login** — open the URL; it prompts for first-run owner account setup (user accounts aren't part of workflow/credential import).

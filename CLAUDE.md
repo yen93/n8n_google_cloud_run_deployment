@@ -28,7 +28,34 @@ See `DEPLOYMENT.md` for the full runbook and `as_built.txt` for the current inve
    Supabase's CA via `DB_POSTGRESDB_SSL_CA` (it uses a private CA not in Node's
    trust store). n8n's connection builder only creates an SSL object when a
    ca/cert/key is set OR rejectUnauthorized is false.
-3. n8n CLI export/import over the network to Supabase is slow (imports one workflow
+3. **Editor stuck "Offline / No network connection", can't save — Cloud Run
+   reserves `/healthz`.** Google's edge intercepts the exact path `/healthz` and
+   returns its own 404; the request never reaches the container (verified three
+   ways: an unrelated Cloud Run service in this project 404s on it too; the
+   container serves `/healthz` -> `{"status":"ok"}` locally; and a `/healthz`
+   request never appears in Cloud Run request logs while `/healthz/readiness`
+   does). n8n's frontend heartbeat (`useBackendStatus`, 10s interval) polls the
+   health endpoint, gets 404, and marks the backend offline, blocking saves.
+   **Fix (applied): `N8N_ENDPOINT_HEALTH=/n8n-health`.** The frontend doesn't
+   hardcode the path — it reads `endpointHealth` from `/rest/settings`, and
+   `resolveFrontendHealthEndpointPath()` echoes this env var when set, so backend
+   and frontend agree on the new path. Verify with
+   `curl <url>/n8n-health` -> `{"status":"ok"}`.
+   Two dead ends, do NOT repeat them:
+   - `N8N_PATH=/n8n/` "works" for the heartbeat but half-breaks the app: REST and
+     `/static/*` are NOT moved under the prefix, so `/n8n/static/base-path.js`
+     returns HTML and the editor renders a blank white page.
+   - `N8N_PUSH_BACKEND=sse` breaks the push connection: same-origin EventSource
+     sends no `Origin` header, so n8n's origin validator rejects it with
+     `500 Invalid origin!`. Default WebSocket push is fine (`GET 101`) and was
+     never the problem.
+5. **Windows: `gcloud` env-var values starting with `/` get mangled by Git Bash.**
+   `--update-env-vars="N8N_PATH=/n8n/"` in the Bash tool silently became
+   `C:\Program Files\Git\n8n\`, and `https://` became `https;\\`. Use the
+   PowerShell tool for any `gcloud` command whose value contains a path or URL
+   (`MSYS2_ARG_CONV_EXCL="*"` breaks gcloud's own wrapper — don't use it).
+   Always read the value back with `gcloud run services describe` to confirm.
+4. n8n CLI export/import over the network to Supabase is slow (imports one workflow
    at a time); expect minutes, not seconds.
 4. On Windows Git Bash, `docker cp`/`docker exec` with container paths mangle under
    MSYS path conversion — prefix commands with `export MSYS_NO_PATHCONV=1`.
