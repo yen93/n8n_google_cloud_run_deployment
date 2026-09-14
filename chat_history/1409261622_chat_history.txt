@@ -1,0 +1,110 @@
+================================================================================
+CHAT HISTORY EXPORT — 2026-09-14
+Session: Cloud Run billing questions and cost recalculation after removing the
+intraday workflows, plus granting James owner + billing access. Document/push.
+================================================================================
+
+--------------------------------------------------------------------------------
+USER:
+Cloud Run shows $0.39 for the last few days since deploying the workflows. Will
+this be paid at end of month? Is there a free-hours deduction?
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Explained: charges accrue through the month and are billed at cycle end (or drawn
+from credits/trial first if any). The Cloud Run free tier is a fixed monthly
+bucket (vCPU-seconds/GiB-seconds/requests), applied automatically and reset on the
+1st, and shared across all Cloud Run services in the account (also the `dashboard`
+service). Key point: don't linearly extrapolate $0.39 — early-month usage is
+absorbed by the free bucket, then the rest of the month bills at full rate.
+Couldn't tell gross-vs-net from one number; offered to pull exact figures on
+re-auth.
+
+--------------------------------------------------------------------------------
+USER:
+Ran `gcloud auth login` (re-authenticated).
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Pulled live data. Confirmed config: CPU always-allocated (throttling=false),
+1 vCPU + 1 GiB, scale 0->1. Billing account 015621-F89AA0-E78632, enabled.
+Billable instance time month-to-date ≈ 10.1 instance-hours (~$0.39 — free tier
+appears to be absorbing ~half, since 10h gross would be ~$0.73). Projected
+month-end ~$8-12 and a full month of the 7am-4pm intraday pattern ~$12-18.
+
+--------------------------------------------------------------------------------
+USER:
+Is there no way to keep everything running in Google Cloud at $0?
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+On Cloud Run: no — the intraday every-5/15-min jobs force ~9h/day (~270h/month)
+uptime, far over the ~50 vCPU-hour free allowance, and always-allocated CPU is
+mandatory (the DB-ping gotcha). But on Google Cloud generally: yes, via the
+Always-Free e2-micro Compute Engine VM (us-west1/us-central1/us-east1), running
+n8n 24/7 for $0 with Supabase still as the DB — native schedule triggers would
+work again. Trade-offs: US region, 1 GB RAM (tight/possible OOM; e2-small 2GB is
+~$13/mo and not free), self-managed VM, and a migration. Gave three options:
+stay on Cloud Run (~$8-18, zero ops), move to free VM ($0, more ops/risk), or
+trim the intraday window.
+
+--------------------------------------------------------------------------------
+USER:
+Removed the Email Handling Agent and Action Items Automation workflows (moved to
+local Docker); all remaining workflows now run once a day. Recalculate costs.
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Pulled billable instance time again (~10.4 instance-hours MTD; that already-spent
+amount stays). Recalculated: with only the once-daily batch (7:00-9:30 AM), uptime
+drops to roughly 30-82 h/month (likely lower if the 15-min-spaced calls don't
+chain), landing around the ~50 vCPU-hour free allowance → ~$0-3/month (September
+likely finishes under ~$1-2). Noted they could reach a true $0 by compressing the
+daily batch into a tighter window so monthly uptime stays under the free tier.
+
+--------------------------------------------------------------------------------
+USER:
+Can I share this Cloud Run service to the Google Workspace owner?
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Checked: project is under org 655573526176; julienne is roles/owner (can grant);
+service is public (allUsers run.invoker). Explained two "share" meanings —
+(A) just use the n8n app (already public, send URL + n8n account), or (B) manage
+in GCP via an IAM grant (viewer / run.admin / owner). Asked for the email + level.
+
+--------------------------------------------------------------------------------
+USER:
+Add james@myadventuregroup.com.au as roles/owner so he can see and control
+billing and all.
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Flagged that project Owner alone doesn't include billing-account control, so did
+BOTH: granted roles/owner on project claudegwscli-502400, and roles/billing.admin
+on billing account 015621-F89AA0-E78632 (via the Cloud Billing REST API since the
+gcloud beta component isn't installed). Confirmed both. Noted it's effective
+immediately, julienne keeps her access, and both are reversible. Offered a budget
+alert / full ownership handoff.
+
+--------------------------------------------------------------------------------
+USER:
+dcp these changes. (Mid-turn: "i already deactivated/unscheduled them on
+supabase.")
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Before documenting, checked cron.job in Supabase to make sure the removed
+workflows weren't still being pinged (which would keep the container awake and
+negate the cost drop). Confirmed: only 11 once-daily jobs remain, the intraday
+jobs are gone (user confirmed they unscheduled them) — so the ~$0-3/month figure
+holds. Flagged two discrepancies: (1) the live set does NOT include
+n8n-linkedin-outbound-sales (7:00 AM) — confirm if wanted; (2) schedule_webhooks.sql
+still contains the now-unwanted intraday section and a differently-named 12th job,
+so re-running it would recreate dead jobs. Updated as_built.txt (live 11 daily
+jobs, intraday removed, cost ~$0-3, new ACCESS/OWNERSHIP section for James as
+owner + billing.admin, two workflows moved to local Docker). Committed and pushed.
+
+================================================================================
+END OF EXPORT
+================================================================================

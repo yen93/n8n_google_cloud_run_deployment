@@ -36,10 +36,21 @@ EXTERNAL INTEGRATIONS
   - supabase-ca-cert — Supabase CA chain, wired to DB_POSTGRESDB_SSL_CA.
   All three granted to the compute service account (secretAccessor).
 
+ACCESS / OWNERSHIP
+- GCP project claudegwscli-502400 is under organization 655573526176 (the
+  myadventuregroup.com.au Workspace org).
+- Project IAM owners (roles/owner): julienne@ and james@myadventuregroup.com.au
+  (james added 2026-09-14).
+- Billing account 015621-F89AA0-E78632, roles/billing.admin: julienne@ and
+  james@myadventuregroup.com.au (james added 2026-09-14, so he can see/control
+  billing). Billing enabled on the project.
+
 DATA STORES
 - Supabase Postgres holds all n8n state: 52 workflows, 26 credentials (migrated
   2026-09-11). Execution history is NOT migrated and is pruned after 14 days.
 - Old local SQLite (D:\n8n_data\database.sqlite, ~1.5GB) retained as backup.
+- Two workflows (Email Handling Agent, Action Items Automation) were moved back
+  to a LOCAL Docker n8n on 2026-09-14 (their Cloud Run webhooks/cron jobs removed).
 
 AUTOMATIONS / ROUTINES
 - Scheduling approach (chosen 2026-09-14): n8n's in-process Schedule Trigger does
@@ -48,27 +59,34 @@ AUTOMATIONS / ROUTINES
   external HTTP calls to per-workflow Webhook Trigger URLs, driven by Supabase
   pg_cron + pg_net (fully free, in-stack). Each daily job fires an HTTP GET that
   both wakes the container and triggers the workflow.
-- scripts/schedule_webhooks.sql (repo root: schedule_webhooks.sql) — enables
-  pg_cron + pg_net and creates the cron jobs (names n8n-*). EXECUTED against the
-  DB on 2026-09-14, so the jobs are LIVE. Two groups:
-  - 12 once-daily jobs, staggered 7:00-9:30 AM Manila (two share the 9:30 AM slot:
-    Sales Daily Email Notification and Insta Story Scraper: Log to sheet/notify Liv).
-  - 2 intraday-recurring workflows within a 7:00 AM-4:00 PM Manila window, each
-    using THREE cron entries (…-w1/w2/w3) because the Manila window = UTC
-    23:00-08:00 crosses midnight UTC: Email Handling Agent (every 5 min) and
-    Action Items Automation (every 15 min).
-  All times stored as UTC (pg_cron runs in UTC, no DST). The intraday window keeps
-  the container awake ~9 h/day (~270 h/month) — the main Cloud Run cost driver
-  (est. ~$12-18/month; daily-only would be ~$2-8).
+- LIVE cron jobs (cron.job in Supabase, verified 2026-09-14): 11 active, ALL
+  once-daily, staggered ~7:00-9:30 AM Manila (stored as UTC; pg_cron runs in UTC,
+  no DST). Two share the 9:30 AM slot (n8n-sales-daily-email-notification and
+  "Insta Story Scraper: Log to sheet and notify Liv"). All fire an HTTP GET to a
+  webhook, which both wakes the container and triggers the workflow.
+  - The 2 intraday-recurring jobs (Email Handling Agent every 5 min, Action Items
+    Automation every 15 min, 7 AM-4 PM) were REMOVED — those workflows were moved
+    to a local Docker n8n. This is what dropped the cost (no more ~9 h/day uptime).
+  - Discrepancy to reconcile: the live set does NOT include
+    n8n-linkedin-outbound-sales (LinkedIn Outbound Sales, 7:00 AM) — either not
+    added or later removed; confirm if it should be scheduled.
+- scripts/schedule_webhooks.sql (repo root) — the reference script that created
+  the jobs. STALE vs live: it still contains the intraday section (Email Handling
+  Agent / Action Items) which is no longer wanted, and its 12th daily job is named
+  n8n-insta-story-scraper-log-notify-liv (live job uses the friendly name). Re-run
+  it only after pruning the intraday section, or it will recreate the dead jobs.
+- COST (Cloud Run, always-allocated 1 vCPU + 1 GiB): now that only once-daily jobs
+  remain, container uptime is minimal (~daily 7-9:30 batch), so ~$0-3/month
+  (mostly within the free tier). Was heading to ~$12-18/month with the intraday
+  jobs. Verified via billable_instance_time metric (~10 instance-hours MTD as of
+  2026-09-14).
 - Webhook trigger URLs for the workflows are listed in `n8n webhooks.txt`
-  (repo root) — 14 as of 2026-09-14, all covered by schedule_webhooks.sql. They
-  are currently Authentication=None (public, GUID-path, unauthenticated) — anyone
-  with a URL can trigger the workflow. No token stored.
+  (repo root) — 14 listed as of 2026-09-14 (includes the 2 now-local intraday
+  ones). They are Authentication=None (public, GUID-path, unauthenticated) —
+  anyone with a URL can trigger the workflow. No token stored.
 - Legacy: the original 29 schedule triggers across the 13 formerly-active
-  workflows were disabled during the 2026-09-11 migration; workflows are being
-  re-activated with Webhook Triggers per the above. Email Handling Agent and
-  Action Items Automation (formerly native every-1-min/5-min schedule triggers)
-  are now webhook-driven via the intraday pg_cron jobs above.
+  workflows were disabled during the 2026-09-11 migration; workflows re-activated
+  with Webhook Triggers per the above.
 
 OTHER
 - gpc_proj_id.txt — one-line file holding the GCP project id (claudegwscli-502400).
