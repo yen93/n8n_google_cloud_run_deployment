@@ -49,19 +49,26 @@ AUTOMATIONS / ROUTINES
   pg_cron + pg_net (fully free, in-stack). Each daily job fires an HTTP GET that
   both wakes the container and triggers the workflow.
 - scripts/schedule_webhooks.sql (repo root: schedule_webhooks.sql) — enables
-  pg_cron + pg_net and creates 12 idempotent daily cron jobs (names n8n-*), one
-  per webhook, staggered 7:00-9:30 AM Manila (stored as UTC; pg_cron runs in UTC,
-  no DST). Two jobs share the 9:30 AM slot (Sales Daily Email Notification and
-  Insta Story Scraper: Log to sheet and notify Liv). NOT yet executed against the
-  DB as of this session's end.
+  pg_cron + pg_net and creates the cron jobs (names n8n-*). EXECUTED against the
+  DB on 2026-09-14, so the jobs are LIVE. Two groups:
+  - 12 once-daily jobs, staggered 7:00-9:30 AM Manila (two share the 9:30 AM slot:
+    Sales Daily Email Notification and Insta Story Scraper: Log to sheet/notify Liv).
+  - 2 intraday-recurring workflows within a 7:00 AM-4:00 PM Manila window, each
+    using THREE cron entries (…-w1/w2/w3) because the Manila window = UTC
+    23:00-08:00 crosses midnight UTC: Email Handling Agent (every 5 min) and
+    Action Items Automation (every 15 min).
+  All times stored as UTC (pg_cron runs in UTC, no DST). The intraday window keeps
+  the container awake ~9 h/day (~270 h/month) — the main Cloud Run cost driver
+  (est. ~$12-18/month; daily-only would be ~$2-8).
 - Webhook trigger URLs for the workflows are listed in `n8n webhooks.txt`
-  (repo root) — 12 as of 2026-09-14, all covered by schedule_webhooks.sql and
-  the user guide's Daily Run Schedule. They are currently Authentication=None
-  (public, GUID-path, unauthenticated) — anyone with a URL can trigger the
-  workflow. No token stored.
+  (repo root) — 14 as of 2026-09-14, all covered by schedule_webhooks.sql. They
+  are currently Authentication=None (public, GUID-path, unauthenticated) — anyone
+  with a URL can trigger the workflow. No token stored.
 - Legacy: the original 29 schedule triggers across the 13 formerly-active
   workflows were disabled during the 2026-09-11 migration; workflows are being
-  re-activated with Webhook Triggers per the above.
+  re-activated with Webhook Triggers per the above. Email Handling Agent and
+  Action Items Automation (formerly native every-1-min/5-min schedule triggers)
+  are now webhook-driven via the intraday pg_cron jobs above.
 
 OTHER
 - gpc_proj_id.txt — one-line file holding the GCP project id (claudegwscli-502400).

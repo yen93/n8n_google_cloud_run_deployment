@@ -1,0 +1,73 @@
+================================================================================
+CHAT HISTORY EXPORT — 2026-09-14
+Session: Estimate monthly Cloud Run cost for the active workflows, then add two
+intraday-recurring webhooks (7am-4pm PH window) to the schedule script and user
+guide; user ran the script (jobs now live). Document/commit/push.
+================================================================================
+
+--------------------------------------------------------------------------------
+USER:
+Asked for a monthly cost check on the n8n Cloud Run URL: one workflow runs every
+5 min via native n8n schedule trigger, the rest run once a day via webhook.
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+gcloud auth was expired (couldn't read live config/billing). Used Supabase
+execution_entity to measure actual behavior. Key finding: the "every 5 min"
+native trigger is NOT actually running around the clock — zero executions on
+Sep 12 and 13, 77 on Sep 14 (only while the editor was open). Explained the cost
+driver: with --no-cpu-throttling (CPU always allocated), you pay for every second
+an instance is ALIVE, and min-instances=0 lets it sleep. Gave scenarios:
+container mostly asleep (once-daily only) ≈ $2-8/mo; true 24/7 ≈ ~$50/mo.
+Flagged that reliable native 5-min firing and near-$0 cost are mutually exclusive
+on this architecture.
+
+--------------------------------------------------------------------------------
+USER:
+Wants the 5-min workflow to run every 5 min but only 7am-4pm PH. Better to do it
+via Supabase webhooks like the rest? Does the container live in Supabase?
+Bottom line still $2-8/month?
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Clarified architecture: the container runs on Google Cloud Run (the only thing
+billed by uptime); Supabase is just the Postgres DB + the pg_cron scheduler — the
+container does NOT live in Supabase. Confirmed webhook-via-pg_cron is the right
+approach; noted 7am-4pm PH = 23:00-08:00 UTC crosses midnight so it needs 2-3
+cron entries. Corrected the bottom line: calling the container every few minutes
+7am-4pm keeps it awake ~9 h/day (~270 h/month), so expect ~$12-18/month (not
+$2-8, which was the once-daily-only figure); ~$50 would be true 24/7. Cost lever
+is the window width, not the interval.
+
+--------------------------------------------------------------------------------
+USER:
+Provided two workflows to schedule the same way: Email Handling Agent (webhook
+29be466d-…, every 5 min 7am-4pm PH) and Action Items Automation (webhook
+802f5576-…, every 15 min 7am-4pm PH).
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Added an "INTRADAY RECURRING JOBS" section to schedule_webhooks.sql: each
+workflow gets three cron entries (…-w1/w2/w3) to cover the UTC-wrapping window —
+Email Handling Agent (*/5 23, */5 0-7, 0 8) and Action Items Automation
+(*/15 23, */15 0-7, 0 8), all GET with 30s timeout. Added both to the user
+guide's schedule section as "runs repeatedly through the working day." Noted this
+doesn't stack on the cost — the 5-min job already holds the container awake for
+the whole window.
+
+--------------------------------------------------------------------------------
+USER:
+Said the script was already run (jobs now live in Supabase) and asked to /dcp.
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Found the user had also appended both intraday webhooks to n8n webhooks.txt (now
+14 webhooks). Saved this transcript; updated as_built.txt (jobs now EXECUTED/live;
+12 daily + 2 intraday-recurring workflows via 6 windowed cron entries; 14
+webhooks; ~$12-18/mo note; Email Handling Agent & Action Items now webhook-driven
+instead of native triggers). Left CLAUDE.md unchanged. Security-scanned — no
+secrets (webhook URLs only). Committed and pushed.
+
+================================================================================
+END OF EXPORT
+================================================================================

@@ -43,3 +43,12 @@ Batch Mailer
 Sales Daily Email Notification
 = https://n8n-659687081407.australia-southeast1.run.app/webhook/7dc5b0a7-071a-4a66-99e4-ab48cc23aeff
 --9:30 am PH time
+
+Email Handling Agent
+= https://n8n-659687081407.australia-southeast1.run.app/webhook/29be466d-6df5-4352-b6d0-2ecf014a9961
+-- Run every 5 minutes between 7am to 4pm PH Time
+
+Action Items Automation
+= https://n8n-659687081407.australia-southeast1.run.app/webhook/802f5576-c329-4fe1-88d0-bcd33502ca61
+-- Run every 15 minutes between 7am to 4pm PH Time
+

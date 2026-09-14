@@ -118,6 +118,51 @@ select cron.schedule('n8n-insta-story-scraper-log-notify-liv', '30 1 * * *', $$
 $$);
 
 -- ============================================================================
+-- INTRADAY RECURRING JOBS — every N minutes within 7:00 AM–4:00 PM Manila
+-- ============================================================================
+-- The Manila window 07:00–16:00 = UTC 23:00–08:00, which crosses midnight UTC,
+-- so each workflow takes THREE cron entries: the 7 AM hour (23:xx UTC), the
+-- 8 AM–3:55 PM block (00:xx–07:xx UTC), and the final 4:00 PM run (08:00 UTC).
+-- NOTE: calling the container every few minutes across this window keeps it
+-- awake ~9 h/day (~270 h/month) — the main Cloud Run cost driver (~$12–18/mo).
+-- To trim cost, narrow the window (hours), not the interval.
+-- ============================================================================
+
+-- Email Handling Agent | every 5 min, 7:00 AM–4:00 PM Manila
+select cron.schedule('n8n-email-handling-agent-w1', '*/5 23 * * *', $$
+  select net.http_get(
+    url := 'https://n8n-659687081407.australia-southeast1.run.app/webhook/29be466d-6df5-4352-b6d0-2ecf014a9961',
+    timeout_milliseconds := 30000);
+$$);
+select cron.schedule('n8n-email-handling-agent-w2', '*/5 0-7 * * *', $$
+  select net.http_get(
+    url := 'https://n8n-659687081407.australia-southeast1.run.app/webhook/29be466d-6df5-4352-b6d0-2ecf014a9961',
+    timeout_milliseconds := 30000);
+$$);
+select cron.schedule('n8n-email-handling-agent-w3', '0 8 * * *', $$
+  select net.http_get(
+    url := 'https://n8n-659687081407.australia-southeast1.run.app/webhook/29be466d-6df5-4352-b6d0-2ecf014a9961',
+    timeout_milliseconds := 30000);
+$$);
+
+-- Action Items Automation | every 15 min, 7:00 AM–4:00 PM Manila
+select cron.schedule('n8n-action-items-automation-w1', '*/15 23 * * *', $$
+  select net.http_get(
+    url := 'https://n8n-659687081407.australia-southeast1.run.app/webhook/802f5576-c329-4fe1-88d0-bcd33502ca61',
+    timeout_milliseconds := 30000);
+$$);
+select cron.schedule('n8n-action-items-automation-w2', '*/15 0-7 * * *', $$
+  select net.http_get(
+    url := 'https://n8n-659687081407.australia-southeast1.run.app/webhook/802f5576-c329-4fe1-88d0-bcd33502ca61',
+    timeout_milliseconds := 30000);
+$$);
+select cron.schedule('n8n-action-items-automation-w3', '0 8 * * *', $$
+  select net.http_get(
+    url := 'https://n8n-659687081407.australia-southeast1.run.app/webhook/802f5576-c329-4fe1-88d0-bcd33502ca61',
+    timeout_milliseconds := 30000);
+$$);
+
+-- ============================================================================
 -- VERIFY  (run after the above)
 -- ============================================================================
 -- List all scheduled jobs:
