@@ -1,0 +1,40 @@
+================================================================================
+CHAT HISTORY EXPORT — 2026-09-14
+Session: Regenerate schedule_webhooks.sql and the n8n user guide to include the
+12th webhook, then document/commit/push.
+================================================================================
+
+--------------------------------------------------------------------------------
+USER:
+"regenerate the sql and guide to include the 12th webhook"
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Added the 12th webhook — "Insta Story Scraper: Log to sheet and notify Liv"
+(GUID 57fe4813-a476-4f26-b27b-e011e5c17092, 9:30 AM PH = 01:30 UTC) — to both
+files:
+- schedule_webhooks.sql: new job cron.schedule('n8n-insta-story-scraper-log-
+  notify-liv', '30 1 * * *', ...) placed after Sales Daily Email Notification;
+  now 12 jobs total.
+- "n8n Automations — User Guide.html": added the workflow to the Daily Run
+  Schedule list at 9:30 AM.
+Flagged that it shares the 9:30 AM slot with Sales Daily Email Notification
+(fine for pg_cron; offered to stagger it to 9:45 AM if preferred). Noted these
+were local edits only — not committed, not run against Supabase, and the Drive
+guide copy still the older render.
+
+--------------------------------------------------------------------------------
+USER:
+"dcp these changes"
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Ran the dcp routine. Saved this transcript; updated as_built.txt (schedule_
+webhooks.sql now covers 12 jobs, two sharing the 9:30 AM slot; removed the
+stale "script covers only 11" caveat). Left CLAUDE.md unchanged (no
+architecture/gotcha change). Security-scanned — no secrets (webhook URLs only).
+Committed and pushed the two edited files plus as_built.txt and this transcript.
+
+================================================================================
+END OF EXPORT
+================================================================================

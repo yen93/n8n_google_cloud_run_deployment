@@ -110,6 +110,13 @@ select cron.schedule('n8n-sales-daily-email-notification', '30 1 * * *', $$
     timeout_milliseconds := 30000);
 $$);
 
+-- Insta Story Scraper: Log to sheet and notify Liv | 9:30 AM | 01:30 UTC
+select cron.schedule('n8n-insta-story-scraper-log-notify-liv', '30 1 * * *', $$
+  select net.http_get(
+    url := 'https://n8n-659687081407.australia-southeast1.run.app/webhook/57fe4813-a476-4f26-b27b-e011e5c17092',
+    timeout_milliseconds := 30000);
+$$);
+
 -- ============================================================================
 -- VERIFY  (run after the above)
 -- ============================================================================

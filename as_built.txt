@@ -49,15 +49,16 @@ AUTOMATIONS / ROUTINES
   pg_cron + pg_net (fully free, in-stack). Each daily job fires an HTTP GET that
   both wakes the container and triggers the workflow.
 - scripts/schedule_webhooks.sql (repo root: schedule_webhooks.sql) — enables
-  pg_cron + pg_net and creates 11 idempotent daily cron jobs (names n8n-*), one
+  pg_cron + pg_net and creates 12 idempotent daily cron jobs (names n8n-*), one
   per webhook, staggered 7:00-9:30 AM Manila (stored as UTC; pg_cron runs in UTC,
-  no DST). NOT yet executed against the DB as of this session's end.
+  no DST). Two jobs share the 9:30 AM slot (Sales Daily Email Notification and
+  Insta Story Scraper: Log to sheet and notify Liv). NOT yet executed against the
+  DB as of this session's end.
 - Webhook trigger URLs for the workflows are listed in `n8n webhooks.txt`
-  (repo root) — 12 as of 2026-09-14 (a 12th, "Insta Story Scraper: Log to sheet
-  and notify Liv" at 9:30 AM PH, was added after schedule_webhooks.sql was
-  written, so the script still covers only the original 11 — regenerate the SQL
-  to include it). They are currently Authentication=None (public, GUID-path,
-  unauthenticated) — anyone with a URL can trigger the workflow. No token stored.
+  (repo root) — 12 as of 2026-09-14, all covered by schedule_webhooks.sql and
+  the user guide's Daily Run Schedule. They are currently Authentication=None
+  (public, GUID-path, unauthenticated) — anyone with a URL can trigger the
+  workflow. No token stored.
 - Legacy: the original 29 schedule triggers across the 13 formerly-active
   workflows were disabled during the 2026-09-11 migration; workflows are being
   re-activated with Webhook Triggers per the above.
