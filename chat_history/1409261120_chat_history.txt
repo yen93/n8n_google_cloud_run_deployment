@@ -1,0 +1,142 @@
+================================================================================
+CHAT HISTORY EXPORT — 2026-09-14
+Session: Diagnose why a "daily 10:05 AM" n8n workflow never fired on Cloud Run,
+then design a $0 replacement for n8n's in-process cron using Supabase
+pg_cron + pg_net, and script daily schedules for all 11 webhook-triggered
+workflows.
+================================================================================
+
+--------------------------------------------------------------------------------
+USER:
+Reported that a published workflow "130726 - Soc Med Follow Up Sequence" (daily
+trigger at 10:05 AM) did not run even though 10:05 had passed. Gave the editor
+link (workflow id gI2MaSOvuxrzJ4m4).
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Investigated. gcloud auth had expired (non-interactive), so used the Supabase MCP
+against project ref uwsncuowtzydylfabikj to inspect state directly, and confirmed
+the container was reachable (/n8n-health -> 200).
+
+Findings from the DB:
+- The workflow is active=true; of its 10 Schedule Trigger nodes only "Schedule
+  Trigger2" is enabled (triggerAtHour:10, triggerAtMinute:5), wired to an Execute
+  a SQL query node. So the workflow config itself was fine.
+- execution_entity showed a 62-hour dead zone: NO schedule triggers fired for ANY
+  workflow from 11 Sep 19:00 Sydney until the container was woken ~14 Sep morning.
+  Root cause: Cloud Run min-instances=0 scales the container to zero after ~15 min
+  idle, and n8n's scheduler is in-process — it only runs while a container is alive.
+  --no-cpu-throttling does NOT prevent this (it stops throttling within a live
+  instance, not scale-to-zero).
+- Critically, at the 10:05 Sydney slot (00:05 UTC) the container WAS awake and the
+  "Email Handling Agent" cron fired at 00:05:19 — but Soc Med did not. Save history
+  showed the workflow was activated at 02:04 UTC (= 10:04 AM Manila), well after
+  its fire slot.
+
+Asked the user (a) when they activated it and (b) how they wanted reliability fixed
+(Cloud Scheduler ping vs webhook vs min-instances=1 vs diagnose-only).
+
+--------------------------------------------------------------------------------
+USER:
+"i saved it around 10am" and "wait, is the timezone in sydney? im in philippines
+tho." Interrupted the follow-up question, saying it was questions-only for now, no
+implementation.
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Explained the two-part cause clearly:
+1. Timezone: server GENERIC_TIMEZONE=Australia/Sydney (AEST, UTC+10 in Sept, no DST
+   yet), user is in Manila (UTC+8). So "10:05" meant 10:05 Sydney = 8:05 AM Manila.
+2. Activation timing: they activated at 10:04 AM Manila (02:04 UTC), ~2 hours after
+   the 8:05 AM Manila fire slot had already passed. So it missed on both counts.
+   Noted the Sydney figure came from repo config, not the live container (gcloud
+   needed reauth to verify).
+
+--------------------------------------------------------------------------------
+USER:
+Two questions (no implementation): (1) Is a webhook trigger better/cheaper than a
+schedule trigger? (2) Can we call webhooks for free via Supabase or another service?
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Answered:
+1. Webhooks are NOT cheaper — Cloud Run cost is driven by container awake-time,
+   which is a similar short daily burst either way. Either approach still needs an
+   EXTERNAL caller because a scaled-to-zero container can't wake itself. The webhook
+   is the cleaner design (one HTTP call both wakes and triggers, no cron-vs-sleep
+   race, caller controls timezone); its cost is the exposed public URL and the need
+   to edit the workflow.
+2. Free schedulers: Supabase pg_cron + pg_net (fully free, in-stack, runs in UTC);
+   Google Cloud Scheduler (3 free jobs, native, per-job timezone). Also Cloudflare
+   Workers cron, cron-job.org, GitHub Actions (best-effort, imprecise), UptimeRobot.
+   Recommended Cloud Scheduler or Supabase pg_cron.
+
+--------------------------------------------------------------------------------
+USER:
+"walk me thru the supabase steps on how to call api endpoints thru supabase pls"
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Checked pg_available_extensions: pg_cron 1.6.4, pg_net 0.20.4, http 1.6 all
+available but none installed yet. Gave a 6-step walkthrough: (1) enable pg_cron +
+pg_net; (2) store any webhook auth token in Supabase Vault; (3) cron.schedule() a
+job whose body calls net.http_post/get to the webhook; (4) timezone — pg_cron is
+UTC, no DST, so 10:05 Manila = 02:05 UTC = '5 2 * * *'; (5) verify via cron.job,
+cron.job_run_details, net._http_response; (6) n8n side — Webhook Trigger node with
+Header Auth. Flagged pg_net is async fire-and-forget (check net._http_response for
+the real status) and that cold starts are slow.
+
+--------------------------------------------------------------------------------
+USER:
+Asked for the Postgres query for step 2, sharing a screenshot of the Soc Med
+webhook node: Production URL .../webhook/be8d0706-4150-4358-8e0d-be4108b88615,
+HTTP method GET, Authentication None, Respond Immediately.
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Pointed out that with Authentication=None there is no secret, so Step 2 (Vault) is
+unnecessary and should be skipped. Flagged the security tradeoff (public,
+triggerable URL). Provided the actually-useful query instead: enable extensions +
+cron.schedule the daily GET via net.http_get with timeout_milliseconds:=30000
+(bumped from the 5s default to survive cold starts), at '5 2 * * *' for 10:05 Manila.
+
+--------------------------------------------------------------------------------
+USER:
+"pls write a script to set schedules for all these webhooks in this text file:
+n8n webhooks.txt"
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Read n8n webhooks.txt (11 webhooks, each annotated with a PH time from 7:00 to
+9:30 AM in 15-min steps). Converted each to UTC (PHT-8; the 7:00-7:45 entries roll
+back to 23:xx UTC the prior day) and wrote schedule_webhooks.sql to the repo root:
+enables pg_cron + pg_net, then one idempotent cron.schedule() per webhook using
+net.http_get with a 30s timeout, plus verify and teardown queries. Flagged three
+things: (1) the GET+Auth-None assumption is based on the one inspected node — any
+POST node needs net.http_post or GET 404s; (2) the URLs are public/unauthenticated;
+(3) the 15-min stagger vs ~15-min idle timeout means several jobs may each
+cold-start. Did NOT execute it against the DB — left as the file only, and offered
+to run it or to verify each node's HTTP method first.
+
+Schedule map (PH -> UTC cron): LinkedIn Outbound Sales 7:00->'0 23 * * *';
+Soc Med Follow Up 7:15->'15 23 * * *'; Cold Leads Follow Up 7:30->'30 23 * * *';
+LinkedIn Comments Enrichment 7:45->'45 23 * * *'; Cold Leads Scraper 8:00->'0 0 * * *';
+Get All AC Deals 8:15->'15 0 * * *'; Get all AC Contacts 8:30->'30 0 * * *';
+Get all AC Accounts 8:45->'45 0 * * *'; Insta Story Scraper 9:00->'0 1 * * *';
+Batch Mailer 9:15->'15 1 * * *'; Sales Daily Email Notification 9:30->'30 1 * * *'.
+
+--------------------------------------------------------------------------------
+USER:
+Ran /dcp to save the chat, update as_built.txt and CLAUDE.md, and push to GitHub.
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Saved this transcript, updated as_built.txt (new AUTOMATIONS entry for the
+pg_cron/pg_net scheduling approach + schedule_webhooks.sql script) and CLAUDE.md
+(new gotcha: scale-to-zero kills in-process cron; timezone Sydney-vs-Manila trap;
+pg_cron is UTC), then committed and pushed. Flagged that n8n webhooks.txt and
+schedule_webhooks.sql contain unauthenticated webhook trigger URLs before staging.
+
+================================================================================
+END OF EXPORT
+================================================================================

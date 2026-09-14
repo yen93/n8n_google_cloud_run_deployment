@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>n8n on Google Cloud Run — Migration &amp; Operations Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body { margin:0; padding:0; font-family:'Lato',sans-serif; }
+  a { color:#37474F; }
+  .content-col { max-width:760px; margin:0 auto; }
+  ul, ol { margin:0; }
+  li { margin-bottom:8px; }
+  p { margin:0 0 16px 0; }
+  p:last-child { margin-bottom:0; }
+  code { background:#ececeb; padding:1px 5px; border-radius:3px; font-family:'Courier New',monospace; font-size:0.9em; }
+</style>
+</head>
+<body style="background:#ffffff;">
+
+<header style="background: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url(https://ssl.gstatic.com/atari/images/simple-header-blended-small.png) center/cover, #37474F; min-height:320px; display:flex; align-items:center; justify-content:center; text-align:center; padding:24px 20px;">
+  <div>
+    <h1 style="color:#ffffff; font-family:'Lato',sans-serif; font-weight:300; font-size:44px; letter-spacing:0.5px; margin:0;">n8n on Google Cloud Run — Migration &amp; Operations Guide</h1>
+  </div>
+</header>
+
+<section style="background:#323232;padding:40px 20px;">
+  <div class="content-col" style="color:#ffffff;font-family:'Lato',sans-serif;font-size:16px;line-height:1.6;">
+    <p>Our n8n workflow automation platform has moved off a local Docker container on a single Windows PC and onto Google Cloud Run, backed by a managed Postgres database. It now runs independently of any one machine, and the whole thing sits on free-tier infrastructure. This guide covers what was built, how to get in and work with your workflows, what changed from the old setup, and how to operate and troubleshoot it.</p>
+  </div>
+</section>
+
+<section style="background:#F2F2F2;padding:32px 20px;">
+  <div class="content-col">
+    <h2 style="color:#37474F;font-family:'Lato',sans-serif;font-weight:300;font-size:26px;margin:0;">What This Is</h2>
+  </div>
+</section>
+<section style="background:#ffffff;padding:32px 20px;">
+  <div class="content-col" style="color:#212121;font-family:'Lato',sans-serif;font-size:16px;line-height:1.6;">
+    <p>Previously, n8n ran in a Docker container on a local PC, storing everything in a single SQLite file at <code>D:\n8n_data</code>. That meant automations only ran while that specific machine was on, and all 52 workflows plus their credentials lived in one 1.5&nbsp;GB file on one disk.</p>
+    <p>n8n now runs as a container on <b>Google Cloud Run</b>, with all of its state (workflows, credentials, execution history) stored in a <b>Supabase Postgres</b> database. Cloud Run starts the container on demand and shuts it down when idle, so there is no server to maintain and no ongoing compute cost at typical usage levels.</p>
+    <p>Everything was migrated: <b>52 workflows</b> and <b>26 credentials</b>. Because the original encryption key was carried across, none of the credentials had to be re-entered — they decrypt exactly as before.</p>
+  </div>
+</section>
+
+<section style="background:#F2F2F2;padding:32px 20px;">
+  <div class="content-col">
+    <h2 style="color:#37474F;font-family:'Lato',sans-serif;font-weight:300;font-size:26px;margin:0;">Who This Guide Is For</h2>
+  </div>
+</section>
+<section style="background:#ffffff;padding:32px 20px;">
+  <div class="content-col" style="color:#212121;font-family:'Lato',sans-serif;font-size:16px;line-height:1.6;">
+    <ul style="padding-left:24px;">
+      <li><b>Whoever operates or edits the automations</b> — the day-to-day work of opening the editor, changing workflows, and re-enabling triggers.</li>
+      <li><b>Whoever needs to maintain the deployment</b> — redeploying the container, checking logs, rotating credentials, or diagnosing an outage.</li>
+    </ul>
+    <p style="margin-top:16px;">It assumes comfort with Docker, the <code>gcloud</code> CLI, and n8n itself. It is not a beginner's introduction to n8n.</p>
+  </div>
+</section>
+
+<section style="background:#F2F2F2;padding:32px 20px;">
+  <div class="content-col">
+    <h2 style="color:#37474F;font-family:'Lato',sans-serif;font-weight:300;font-size:26px;margin:0;">How to Access and Edit Workflows</h2>
+  </div>
+</section>
+<section style="background:#ffffff;padding:32px 20px;">
+  <div class="content-col" style="color:#212121;font-family:'Lato',sans-serif;font-size:16px;line-height:1.6;">
+    <ol style="padding-left:24px;">
+      <li>Open the editor at <a href="https://n8n-659687081407.australia-southeast1.run.app">https://n8n-659687081407.australia-southeast1.run.app</a>.</li>
+      <li><b>First visit only:</b> n8n will prompt you to create an owner account (email and password). User logins were deliberately not migrated, so this is a fresh account — it is unrelated to your old local login.</li>
+      <li>Edit workflows exactly as you did locally: open a workflow, change nodes, hit Save. Changes write straight to the Supabase database.</li>
+      <li>To bring a workflow back to life, open it, re-enable its trigger node (all triggers were disabled during migration — see below), then flip the <b>Active</b> toggle in the top right.</li>
+    </ol>
+    <p style="margin-top:16px;"><b>You do not need to redeploy anything to change a workflow.</b> Editing workflows, credentials, and settings in the UI persists directly to the database. A redeploy is only needed when the container image, environment variables, or secrets change.</p>
+    <div style="margin-top:20px;">
+      <img src="https://placehold.co/900x400/eeeeee/37474f?text=n8n+Editor+Login+Screen" alt="n8n Editor Login Screen" style="max-width:100%;height:auto;display:block;">
+      <p style="font-size:13px;color:#757575;margin-top:6px;">Placeholder image — replace with an actual screenshot.</p>
+    </div>
+  </div>
+</section>
+
+<section style="background:#F2F2F2;padding:32px 20px;">
+  <div class="content-col">
+    <h2 style="color:#37474F;font-family:'Lato',sans-serif;font-weight:300;font-size:26px;margin:0;">Important: All Triggers Were Disabled</h2>
+  </div>
+</section>
+<section style="background:#ffffff;padding:32px 20px;">
+  <div class="content-col" style="color:#212121;font-family:'Lato',sans-serif;font-size:16px;line-height:1.6;">
+    <p>This is the single biggest behavioural difference from the old setup, and it was a deliberate cost decision.</p>
+    <p>All 13 previously-active workflows were driven purely by <b>Schedule (cron) triggers</b> — 29 of them in total, once you count the ones buried inside individual workflows. Cloud Run's free tier depends on the container scaling to zero when idle, and n8n's internal cron scheduler only fires while the container is actually running. Driving those schedules from the cloud instead would have required roughly 26 billable Cloud Scheduler jobs (about US$2.60/month).</p>
+    <p>Rather than incur that, <b>all 29 schedule triggers were disabled and every workflow set to inactive.</b> The trigger nodes were disabled rather than deleted, so they are still sitting in each workflow ready to be re-enabled and reconfigured by hand.</p>
+    <p>Two of the old workflows (<i>Email Handling Agent</i> and <i>Action Items Automation</i>) were firing <b>every single minute</b>. Worth deciding whether they genuinely need that cadence before switching them back on.</p>
+  </div>
+</section>
+
+<section style="background:#F2F2F2;padding:32px 20px;">
+  <div class="content-col">
+    <h2 style="color:#37474F;font-family:'Lato',sans-serif;font-weight:300;font-size:26px;margin:0;">Outstanding Tasks</h2>
+  </div>
+</section>
+<section style="background:#ffffff;padding:32px 20px;">
+  <div class="content-col" style="color:#212121;font-family:'Lato',sans-serif;font-size:16px;line-height:1.6;">
+    <ul style="padding-left:24px;">
+      <li><b>Re-authorise the Google OAuth credentials.</b> Gmail, Drive, Docs, Sheets, and Chat credentials are tied to a redirect URI that pointed at the old <code>localhost:5678</code> instance. Add the Cloud Run URL as an authorised redirect URI on the Google OAuth client, then reconnect each credential in the n8n UI.</li>
+      <li><b>Re-enable the triggers</b> you actually want running, workflow by workflow.</li>
+      <li><b>Keep the old setup as a backup.</b> The original container and <code>D:\n8n_data</code> were deliberately left untouched. Don't delete them until the cloud instance has proven itself over a reasonable period.</li>
+    </ul>
+  </div>
+</section>
+
+<section style="background:#F2F2F2;padding:32px 20px;">
+  <div class="content-col">
+    <h2 style="color:#37474F;font-family:'Lato',sans-serif;font-weight:300;font-size:26px;margin:0;">What to Expect Day to Day</h2>
+  </div>
+</section>
+<section style="background:#ffffff;padding:32px 20px;">
+  <div class="content-col" style="color:#212121;font-family:'Lato',sans-serif;font-size:16px;line-height:1.6;">
+    <ul style="padding-left:24px;">
+      <li><b>Cold starts.</b> The container scales to zero when idle, so the first request after a quiet period takes a few seconds to load. This is normal, not a fault.</li>
+      <li><b>Execution history is pruned after 14 days.</b> This was switched on deliberately — the old SQLite database had grown to 1.5&nbsp;GB because pruning was never configured. The historical execution logs were intentionally not migrated.</li>
+      <li><b>One instance at a time.</b> The service is capped at a single container instance, which matches how the local setup behaved.</li>
+      <li><b>Costs.</b> Cloud Run's free tier and Supabase's free tier cover normal usage, and there are no Cloud Scheduler jobs. The one thing to watch: CPU is set to "always allocated" (required — see the architecture notes), which means billing accrues while an instance is alive rather than only during requests. Keep an eye on the first month's usage.</li>
+    </ul>
+  </div>
+</section>
+
+<section style="background:#F2F2F2;padding:32px 20px;">
+  <div class="content-col">
+    <h2 style="color:#37474F;font-family:'Lato',sans-serif;font-weight:300;font-size:26px;margin:0;">Known Limitations</h2>
+  </div>
+</section>
+<section style="background:#ffffff;padding:32px 20px;">
+  <div class="content-col" style="color:#212121;font-family:'Lato',sans-serif;font-size:16px;line-height:1.6;">
+    <ul style="padding-left:24px;">
+      <li><b>Nothing runs on a schedule right now.</b> Until triggers are manually re-enabled, no workflow fires on its own. Workflows can still be run manually from the editor.</li>
+      <li><b>Google OAuth credentials will fail until re-authorised</b> against the new URL.</li>
+      <li><b>Past execution history did not come across.</b> Only workflows and credentials were migrated; the old run logs remain in the local SQLite file.</li>
+      <li><b>Supabase free-tier projects pause after 7 days of complete inactivity.</b> Any regular workflow activity keeps it awake; if the instance sits entirely unused for over a week, the database may need waking from the Supabase dashboard.</li>
+      <li><b>Code nodes using Python may not work.</b> The container's Python task runner isn't available; JavaScript Code nodes are unaffected.</li>
+    </ul>
+  </div>
+</section>
+
+<section style="background:#F2F2F2;padding:32px 20px;">
+  <div class="content-col">
+    <h2 style="color:#37474F;font-family:'Lato',sans-serif;font-weight:300;font-size:26px;margin:0;">How It Was Built (Architecture &amp; Tech Stack)</h2>
+  </div>
+</section>
+<section style="background:#ffffff;padding:32px 20px;">
+  <div class="content-col" style="color:#212121;font-family:'Lato',sans-serif;font-size:16px;line-height:1.6;">
+    <p>End to end, the deployment has four moving parts:</p>
+    <ul style="padding-left:24px;">
+      <li><b>Custom container image</b> — built from the official <code>n8nio/n8n:2.22.6</code> image, with five community node packages baked in at build time (Apify, ScrapingBee, SyncMate, Apollo, SerpApi). These are installed during the image build rather than at runtime, because Cloud Run's filesystem is ephemeral. The image is stored in Google Artifact Registry.</li>
+      <li><b>Cloud Run service</b> — runs the container in <code>australia-southeast1</code> (Sydney), scaling from zero to a maximum of one instance, with 1&nbsp;GB memory and 1 CPU. It handles HTTPS, certificates, and routing automatically.</li>
+      <li><b>Supabase Postgres</b> — a dedicated free-tier project in <code>ap-southeast-2</code> (Sydney) that holds all n8n state. n8n connects over the session pooler with TLS verified against Supabase's certificate authority. Row-Level Security is enabled on every table, which closes off Supabase's auto-generated REST API without affecting n8n's own direct database connection.</li>
+      <li><b>Google Secret Manager</b> — stores the three sensitive values (the n8n encryption key, the database password, and the Supabase CA certificate), injected into the container at runtime. No secrets live in the repository or in the container image.</li>
+    </ul>
+
+    <div style="margin:20px 0;">
+      <img src="https://placehold.co/900x400/eeeeee/37474f?text=Architecture+Diagram" alt="Architecture Diagram" style="max-width:100%;height:auto;display:block;">
+      <p style="font-size:13px;color:#757575;margin-top:6px;">Placeholder image — replace with an actual screenshot.</p>
+    </div>
+
+    <h3 style="color:#37474F;font-family:'Lato',sans-serif;font-weight:400;font-size:19px;margin:24px 0 12px 0;">Tech stack</h3>
+    <ul style="padding-left:24px;">
+      <li>n8n 2.22.6 (Node.js), running in Docker</li>
+      <li>Google Cloud Run (serverless containers) + Artifact Registry + Secret Manager</li>
+      <li>Supabase (managed PostgreSQL 17)</li>
+      <li>Configuration and docs version-controlled in GitHub</li>
+    </ul>
+
+    <p style="margin-top:16px;">Three non-obvious configuration details were required to make this combination work, and they are worth knowing before changing anything:</p>
+    <ul style="padding-left:24px;">
+      <li><b>CPU must stay "always allocated."</b> With Cloud Run's default CPU throttling, the container's CPU is frozen between requests, which stalls n8n's background database heartbeat and makes it falsely report the database as unavailable.</li>
+      <li><b>The database CA certificate must be supplied explicitly.</b> Supabase uses a private certificate authority that isn't in Node.js's default trust store, and n8n's option for skipping certificate verification does not work as documented — it silently falls back to an unencrypted connection that never completes.</li>
+      <li><b>The health-check endpoint had to be moved.</b> Google Cloud Run reserves the exact path <code>/healthz</code> at its edge and returns its own 404 without ever passing the request to the container. n8n's editor polls that endpoint every 10 seconds to decide whether it's online, so the default configuration left the UI permanently showing "No network connection" and refusing to save. Pointing n8n at a different health path resolved it.</li>
+    </ul>
+  </div>
+</section>
+
+<section style="background:#F2F2F2;padding:32px 20px;">
+  <div class="content-col">
+    <h2 style="color:#37474F;font-family:'Lato',sans-serif;font-weight:300;font-size:26px;margin:0;">Operations Runbook</h2>
+  </div>
+</section>
+<section style="background:#ffffff;padding:32px 20px;">
+  <div class="content-col" style="color:#212121;font-family:'Lato',sans-serif;font-size:16px;line-height:1.6;">
+    <p><b>Redeploy after changing the image, environment variables, or secrets</b> (not needed for workflow edits):</p>
+    <ul style="padding-left:24px;">
+      <li>Build and push: <code>docker build -t &lt;artifact-registry-image&gt; .</code> then <code>docker push &lt;same&gt;</code></li>
+      <li>Roll it out: <code>gcloud run services update n8n --region=australia-southeast1 --image=&lt;same&gt;</code></li>
+    </ul>
+
+    <p style="margin-top:16px;"><b>Check service health and logs:</b></p>
+    <ul style="padding-left:24px;">
+      <li>Health endpoint: <code>curl https://n8n-659687081407.australia-southeast1.run.app/n8n-health</code> should return <code>{"status":"ok"}</code></li>
+      <li>Recent logs: <code>gcloud run services logs read n8n --region=australia-southeast1 --limit=50</code></li>
+    </ul>
+
+    <p style="margin-top:16px;"><b>A note for anyone scripting this on Windows:</b> Git Bash silently rewrites command-line values that start with <code>/</code> or contain <code>://</code> into Windows paths, which will corrupt <code>gcloud</code> environment-variable values without any error. Use PowerShell for those commands, and always read the value back with <code>gcloud run services describe</code> to confirm it stored correctly.</p>
+  </div>
+</section>
+
+<section style="background:#F2F2F2;padding:32px 20px;">
+  <div class="content-col">
+    <h2 style="color:#37474F;font-family:'Lato',sans-serif;font-weight:300;font-size:26px;margin:0;">Troubleshooting</h2>
+  </div>
+</section>
+<section style="background:#ffffff;padding:32px 20px;">
+  <div class="content-col" style="color:#212121;font-family:'Lato',sans-serif;font-size:16px;line-height:1.6;">
+    <ul style="padding-left:24px;">
+      <li><b>Editor shows "Offline — No network connection" and won't save.</b> n8n's health-check endpoint isn't reachable. Confirm <code>N8N_ENDPOINT_HEALTH</code> is still set to <code>/n8n-health</code> and that curling that path returns <code>{"status":"ok"}</code>. Never move it back to <code>/healthz</code> — Cloud Run reserves that path.</li>
+      <li><b>Blank white page.</b> Usually means an <code>N8N_PATH</code> / base-path setting has been introduced. n8n does not move its REST and static assets under a base path correctly in this setup; leave the app served from the root URL.</li>
+      <li><b>"Database is not ready!" or repeated 503s.</b> Check that the Cloud Run service still has CPU always-allocated (<code>--no-cpu-throttling</code>). With default throttling this appears even though the database is perfectly healthy.</li>
+      <li><b>Database connection timeouts after a config change.</b> Verify the Supabase CA certificate is still wired into <code>DB_POSTGRESDB_SSL_CA</code>. Without it, the connection silently fails rather than reporting a certificate error.</li>
+      <li><b>A Google-based node suddenly fails to authenticate.</b> Its OAuth credential likely still points at the old local redirect URI. Re-authorise it in the n8n UI against the Cloud Run URL.</li>
+      <li><b>A workflow isn't running on schedule.</b> Expected — all triggers were disabled during migration. Open the workflow, re-enable the trigger node, and set the workflow Active.</li>
+      <li><b>Slow first load after a quiet period.</b> Normal cold start as the container spins up from zero.</li>
+    </ul>
+  </div>
+</section>
+
+<section style="background:#F2F2F2;padding:32px 20px;">
+  <div class="content-col">
+    <h2 style="color:#37474F;font-family:'Lato',sans-serif;font-weight:300;font-size:26px;margin:0;">Where Things Live</h2>
+  </div>
+</section>
+<section style="background:#ffffff;padding:32px 20px;">
+  <div class="content-col" style="color:#212121;font-family:'Lato',sans-serif;font-size:16px;line-height:1.6;">
+    <ul style="padding-left:24px;">
+      <li><b>n8n editor:</b> <a href="https://n8n-659687081407.australia-southeast1.run.app">https://n8n-659687081407.australia-southeast1.run.app</a></li>
+      <li><b>Google Cloud project:</b> <code>claudegwscli-502400</code>, region <code>australia-southeast1</code> — Cloud Run service, Artifact Registry image, and Secret Manager secrets</li>
+      <li><b>Database:</b> Supabase project <code>n8n-production</code> (region <code>ap-southeast-2</code>)</li>
+      <li><b>Deployment repo:</b> <a href="https://github.com/yen93/n8n_google_cloud_run_deployment">github.com/yen93/n8n_google_cloud_run_deployment</a> — Dockerfile, community-node manifest, <code>DEPLOYMENT.md</code> runbook, <code>as_built.txt</code> inventory, and session history</li>
+      <li><b>Backup of the old instance:</b> <code>D:\n8n_data</code> on the original PC, plus its Docker container — retained deliberately, do not delete yet</li>
+    </ul>
+  </div>
+</section>
+
+<section style="background:#F2F2F2;padding:32px 20px;">
+  <div class="content-col">
+    <h2 style="color:#37474F;font-family:'Lato',sans-serif;font-weight:300;font-size:26px;margin:0;">Support / Questions</h2>
+  </div>
+</section>
+<section style="background:#ffffff;padding:32px 20px;">
+  <div class="content-col" style="color:#212121;font-family:'Lato',sans-serif;font-size:16px;line-height:1.6;">
+    <p>The authoritative technical detail lives in the deployment repository: <code>DEPLOYMENT.md</code> is the full runbook with every resource ID and the known gotchas, <code>as_built.txt</code> is the current-state inventory, and <code>CLAUDE.md</code> captures the non-obvious configuration traps for anyone (or any AI assistant) picking up the project later.</p>
+    <p>For questions about this deployment, contact Julienne.</p>
+  </div>
+</section>
+
+<section id="h.68f0b8918457bce8_82" style="background:#ffffff;padding:8px 20px;"><div style="max-width:760px;margin:0 auto;"><hr style="border:none;border-top:1px solid #d9d9d9;margin:0;"></div></section>
+<section id="h.5a0263770fa94d5d_3" style="background:#ffffff;padding:24px 20px;"><div style="max-width:760px;margin:0 auto;"><a href="#" style="display:inline-block;font-family:'Lato',sans-serif;font-size:15px;font-weight:400;color:#ffffff;background:#37474F;padding:12px 28px;border-radius:4px;text-decoration:none;letter-spacing:0.3px;">Button label</a></div></section>
+
+<section style="background:#ffffff;padding:24px 20px;">
+  <div class="content-col" style="color:#212121;font-family:'Lato',sans-serif;font-size:14px;line-height:1.6;">
+    <p style="margin:0;">Updated by: Julienne</p>
+    <p style="margin:0;">Last Update: 11 September 2026</p>
+  </div>
+</section>
+
+</body>
+</html>

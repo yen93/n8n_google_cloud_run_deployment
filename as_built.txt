@@ -1,6 +1,6 @@
 ================================================================================
 AS-BUILT — n8n on Google Cloud Run
-Last updated: 2026-09-11
+Last updated: 2026-09-14
 ================================================================================
 
 CONTAINER IMAGE
@@ -42,9 +42,22 @@ DATA STORES
 - Old local SQLite (D:\n8n_data\database.sqlite, ~1.5GB) retained as backup.
 
 AUTOMATIONS / ROUTINES
-- None active. All 29 schedule triggers across the 13 formerly-active workflows
-  were disabled and workflows set inactive (to keep Cloud Scheduler cost at $0);
-  to be reconfigured manually in the n8n editor.
+- Scheduling approach (chosen 2026-09-14): n8n's in-process Schedule Trigger does
+  NOT run on Cloud Run because min-instances=0 scales the container to zero after
+  ~15 min idle and the scheduler only runs while a container is alive. Replaced by
+  external HTTP calls to per-workflow Webhook Trigger URLs, driven by Supabase
+  pg_cron + pg_net (fully free, in-stack). Each daily job fires an HTTP GET that
+  both wakes the container and triggers the workflow.
+- scripts/schedule_webhooks.sql (repo root: schedule_webhooks.sql) — enables
+  pg_cron + pg_net and creates 11 idempotent daily cron jobs (names n8n-*), one
+  per webhook, staggered 7:00-9:30 AM Manila (stored as UTC; pg_cron runs in UTC,
+  no DST). NOT yet executed against the DB as of this session's end.
+- Webhook trigger URLs for the 11 workflows are listed in `n8n webhooks.txt`
+  (repo root). They are currently Authentication=None (public, GUID-path,
+  unauthenticated) — anyone with a URL can trigger the workflow. No token stored.
+- Legacy: the original 29 schedule triggers across the 13 formerly-active
+  workflows were disabled during the 2026-09-11 migration; workflows are being
+  re-activated with Webhook Triggers per the above.
 
 OTHER
 - gpc_proj_id.txt — one-line file holding the GCP project id (claudegwscli-502400).

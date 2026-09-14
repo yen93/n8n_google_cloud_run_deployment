@@ -22,6 +22,9 @@ See `DEPLOYMENT.md` for the full runbook and `as_built.txt` for the current inve
    throttling + scale-to-zero, n8n's background DB ping timer freezes between
    requests and its 5s ping race fires falsely -> persistent "Database is not
    ready!" 503s even though the DB is fine. Always-allocated CPU is the fix.
+   NOTE: `--no-cpu-throttling` does NOT keep the instance alive — it only stops
+   CPU throttling *within* a live instance. With `min-instances=0` the container
+   still scales to zero after ~15 min idle (see scheduling gotcha #6).
 2. **SSL to Supabase:** `DB_POSTGRESDB_SSL_REJECT_UNAUTHORIZED=false` does NOT work
    — n8n parses the string as truthy, so it silently attempts a plaintext
    connection the pooler never answers (-> connection timeout). You MUST provide
@@ -59,6 +62,22 @@ See `DEPLOYMENT.md` for the full runbook and `as_built.txt` for the current inve
    at a time); expect minutes, not seconds.
 4. On Windows Git Bash, `docker cp`/`docker exec` with container paths mangle under
    MSYS path conversion — prefix commands with `export MSYS_NO_PATHCONV=1`.
+6. **Scheduling: n8n's in-process Schedule Trigger does NOT fire on this deploy.**
+   `min-instances=0` scales the container to zero after ~15 min idle, and n8n's
+   cron scheduler only runs while a container is alive — so scheduled workflows
+   silently stop once the editor/browser is closed (observed: a 62-hour gap where
+   nothing fired). A scaled-to-zero container cannot wake itself; you need an
+   EXTERNAL caller. Chosen fix (2026-09-14): per-workflow Webhook Trigger nodes
+   called daily by Supabase pg_cron + pg_net (free, in-stack) — the GET both wakes
+   the container and triggers the run. See `schedule_webhooks.sql` and as_built.txt.
+   - Timezone trap: `GENERIC_TIMEZONE=Australia/Sydney` but the user is in Manila
+     (UTC+8), so an n8n Schedule Trigger "10:05" = 10:05 Sydney = 8:05 AM Manila.
+     `pg_cron` runs in UTC and does NOT do DST, so write jobs at PHT-8
+     (10:05 Manila = 02:05 UTC = `'5 2 * * *'`).
+   - `pg_net` is async fire-and-forget: cron reports success once the request is
+     QUEUED, not once n8n answers. Confirm real HTTP status in `net._http_response`,
+     not just `cron.job_run_details`. Cold starts are slow — set
+     `timeout_milliseconds := 30000` on the calls.
 
 ## Build & redeploy
 ```
