@@ -52,8 +52,11 @@ AUTOMATIONS / ROUTINES
   pg_cron + pg_net and creates 11 idempotent daily cron jobs (names n8n-*), one
   per webhook, staggered 7:00-9:30 AM Manila (stored as UTC; pg_cron runs in UTC,
   no DST). NOT yet executed against the DB as of this session's end.
-- Webhook trigger URLs for the 11 workflows are listed in `n8n webhooks.txt`
-  (repo root). They are currently Authentication=None (public, GUID-path,
+- Webhook trigger URLs for the workflows are listed in `n8n webhooks.txt`
+  (repo root) — 12 as of 2026-09-14 (a 12th, "Insta Story Scraper: Log to sheet
+  and notify Liv" at 9:30 AM PH, was added after schedule_webhooks.sql was
+  written, so the script still covers only the original 11 — regenerate the SQL
+  to include it). They are currently Authentication=None (public, GUID-path,
   unauthenticated) — anyone with a URL can trigger the workflow. No token stored.
 - Legacy: the original 29 schedule triggers across the 13 formerly-active
   workflows were disabled during the 2026-09-11 migration; workflows are being
@@ -63,5 +66,13 @@ OTHER
 - gpc_proj_id.txt — one-line file holding the GCP project id (claudegwscli-502400).
 - DEPLOYMENT.md — full runbook (resource IDs, gotchas, redeploy steps,
   manual follow-ups).
+- "n8n Automations — User Guide.html" — end-user guide for the MAG team
+  (styled to the iMAG Sites theme). Covers login, building/running workflows,
+  the daily run schedule, how the Supabase cron trigger works, limitations, and
+  support. Generated 2026-09-14 via the create-user-guide-doc skill; also saved
+  to the shared Drive user-guide folder. Edited locally afterward to add the
+  Daily Run Schedule and How-the-Daily-Trigger-Works sections (local copy is
+  ahead of the Drive copy).
+- "iMAG Page.html" — earlier n8n Migration & Operations guide (also in Drive).
 - chat_history/ — per-session narrative logs.
 ================================================================================

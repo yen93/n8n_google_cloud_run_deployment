@@ -1,0 +1,94 @@
+================================================================================
+CHAT HISTORY EXPORT — 2026-09-14
+Session: Generate an end-user guide for the n8n instance via the
+create-user-guide-doc skill, auto-save it to the project root, update that skill
+to always save locally going forward, then add Daily Run Schedule and
+Supabase-cron trigger-explanation sections to the guide.
+================================================================================
+
+--------------------------------------------------------------------------------
+USER:
+Ran /create-user-guide-doc and asked to auto-save the resulting HTML to the
+project root (C:\Users\Cloverly\claude_code\n8n_google_cloud_run_deployment),
+AND to update the create-user-guide-doc skill so it auto-saves the HTML to the
+current project folder on every future run.
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Invoked the skill and read its instructions: it drafts guide content and fires
+the "iMAG Page Builder" cloud routine (trig_01Ri1mhfdBuHUYT5tCSSmYaG) with the
+content inline; the routine renders a themed HTML page and saves it to a Drive
+folder (1fN4U-Ebu_m5tt8Mw-335o9_ZjH5lQqDK). It did NOT previously save a local
+copy.
+
+Gathered project context (CLAUDE.md, as_built.txt, DEPLOYMENT.md). Asked the
+user two clarifying questions: support contact -> "You (julienne@...)"; audience
+-> "MAG team who build/run automations."
+
+Drafted the guide HTML (What This Is / Who For / How to Use / What to Expect /
+Known Limitations / How It Was Built / Troubleshooting / Support) grounded in
+the repo facts (Cloud Run + Supabase + Secret Manager + pg_cron/pg_net; the
+scale-to-zero and Sydney-vs-Manila timezone points). Fired the routine inline
+(session cse_01VbhzKzWHT8nGgyeP84a99C).
+
+Updated the create-user-guide-doc skill (SKILL.md in ~/.claude/skills): revised
+the Output note and added a mandatory new step 4 ("Save a local copy to the
+current project folder") — get the finished file's Drive ID, fetch its HTML via
+the Google-Drive connector, and Write it to the project root as a slugified
+.html; renumbered Report-back to step 5 to report both the local path and the
+Drive link.
+
+Polled the routine run log until it succeeded: it created
+"n8n Automations — User Guide.html" (Drive id 1-qju7OjFVrGFLS-ajagFcIMfMNGA2rrw,
+link https://drive.google.com/file/d/1-qju7OjFVrGFLS-ajagFcIMfMNGA2rrw/view).
+Downloaded the file's base64 content via download_file_content to save it
+locally. A first Bash heredoc decode attempt failed on shell quoting.
+
+--------------------------------------------------------------------------------
+USER:
+(Interrupted the retry.) Asked to update
+"n8n Automations — User Guide.html" so it includes the schedule of runs.
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Confirmed the local file already existed in the project root (11,815 bytes,
+matching the Drive copy — the download had landed). Read its structure and added
+a new "Daily Run Schedule" section (matching the gray-header/white-content band
+pattern) after "What to Expect", listing all 11 workflows by Philippine time
+(7:00-9:30 AM, 15-min stagger), with a note that changes go through the
+automations admin.
+
+--------------------------------------------------------------------------------
+USER:
+Asked to also add a section explaining how Supabase triggers the workflows based
+on a daily cron schedule.
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Added a "How the Daily Trigger Works" section right after the schedule, in plain
+language: (1) pg_cron holds one daily cron entry per workflow; (2) it fires at
+the set time; (3) pg_net sends an HTTP call to the workflow's Webhook Trigger
+URL; (4) the call wakes Cloud Run and starts the workflow. Ended with a one-line
+flow summary and a note that pg_cron stores times in UTC (7:15 AM PHT = 23:15
+UTC example). Flagged that only the local copy was updated (Drive still original)
+and that the schedule goes live once schedule_webhooks.sql is actually run.
+
+--------------------------------------------------------------------------------
+USER:
+Ran /dcp to save the chat, update as_built.txt and CLAUDE.md, and push.
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Found the working tree also contained a user-made edit to n8n webhooks.txt: a
+12th webhook, "Insta Story Scraper: Log to sheet and notify Liv" (9:30 AM PH,
+GUID 57fe4813-...), added after schedule_webhooks.sql was written — so the SQL
+and the guide's schedule still reflect only the original 11. Saved this
+transcript; updated as_built.txt (12th webhook note + the two guide HTML files
+in OTHER); left CLAUDE.md unchanged (no project architecture/gotcha change).
+Security-scanned the session — no secrets (webhook URLs and base64 HTML only).
+Committed and pushed. Flagged the 11-vs-12 discrepancy and the local-vs-Drive
+guide drift for the user to decide on.
+
+================================================================================
+END OF EXPORT
+================================================================================

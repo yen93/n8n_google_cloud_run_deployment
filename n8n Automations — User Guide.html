@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>n8n Automations — User Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Lato', sans-serif;
+    background: #ffffff;
+  }
+  .header-banner {
+    width: 100%;
+    min-height: 320px;
+    background: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url(https://ssl.gstatic.com/atari/images/simple-header-blended-small.png) center/cover, #37474F;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 20px;
+  }
+  .header-banner h1 {
+    color: #ffffff;
+    font-family: 'Lato', sans-serif;
+    font-weight: 300;
+    font-size: 44px;
+    letter-spacing: 0.5px;
+    margin: 0;
+  }
+  .header-banner .subtitle {
+    color: #ffffff;
+    font-weight: 300;
+    font-size: 18px;
+    margin-top: 12px;
+    opacity: 0.9;
+  }
+  .band-dark {
+    width: 100%;
+    background: #323232;
+  }
+  .band-dark .col {
+    color: #ffffff;
+    line-height: 1.6;
+    font-size: 16px;
+  }
+  .band-gray {
+    width: 100%;
+    background: #F2F2F2;
+    padding: 32px 20px;
+  }
+  .band-gray .col {
+    padding: 0;
+  }
+  .band-gray h2 {
+    color: #37474F;
+    font-family: 'Lato', sans-serif;
+    font-weight: 400;
+    font-size: 26px;
+    margin: 0;
+  }
+  .band-white {
+    width: 100%;
+    background: #ffffff;
+    padding: 32px 20px;
+  }
+  .col {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 32px 20px;
+  }
+  .band-white p, .band-white li {
+    color: #212121;
+    font-size: 16px;
+    line-height: 1.6;
+  }
+  .band-white h3 {
+    color: #37474F;
+    font-size: 19px;
+    font-weight: 700;
+    margin-top: 24px;
+    margin-bottom: 8px;
+  }
+  .band-white ul, .band-white ol {
+    padding-left: 24px;
+  }
+  .band-white img {
+    max-width: 100%;
+    display: block;
+    margin: 16px 0 4px 0;
+  }
+  .img-caption {
+    color: #757575;
+    font-size: 13px;
+    font-style: italic;
+    margin: 0 0 8px 0;
+  }
+  .closing p {
+    color: #212121;
+    font-size: 15px;
+    margin: 4px 0;
+  }
+</style>
+</head>
+<body>
+
+<div class="header-banner">
+  <h1>n8n Automations — User Guide</h1>
+</div>
+
+<div class="band-dark">
+  <div class="col">
+    <p>n8n is the tool the MAG team uses to build and run automated workflows — things like follow-up email sequences, lead scraping, and syncing data between ActiveCampaign, Gmail, Google Sheets, and other services. It now runs in the cloud (Google Cloud Run) instead of on a single office computer, so your automations and credentials live in one shared, always-available place. This guide explains how to log in, build and run workflows, and what to expect.</p>
+  </div>
+</div>
+
+<div class="band-gray">
+  <div class="col">
+    <h2>What This Is</h2>
+  </div>
+</div>
+<div class="band-white">
+  <div class="col">
+    <p>n8n is a visual workflow builder. Each <b>workflow</b> is a chain of steps ("nodes") that connect apps and move or transform data automatically — for example, "every morning, pull new leads, enrich them, and draft follow-up emails." You build workflows by dragging nodes onto a canvas and connecting them, no coding required for most tasks.</p>
+    <p>Everything you create — workflows, credentials, and settings — is stored in a shared cloud database, so it is the same for everyone on the team and is not tied to any one person's laptop.</p>
+  </div>
+</div>
+
+<div class="band-gray">
+  <div class="col">
+    <h2>Who This Guide Is For</h2>
+  </div>
+</div>
+<div class="band-white">
+  <div class="col">
+    <p>The MAG team members who log into n8n to <b>create, edit, and run workflow automations</b>. You do not need to be a developer, but you should be comfortable with the apps your workflows connect to (ActiveCampaign, Gmail, Google Sheets, etc.).</p>
+  </div>
+</div>
+
+<div class="band-gray">
+  <div class="col">
+    <h2>How to Use It</h2>
+  </div>
+</div>
+<div class="band-white">
+  <div class="col">
+    <ol>
+      <li><b>Open n8n</b> in your browser: <a href="https://n8n-659687081407.australia-southeast1.run.app">https://n8n-659687081407.australia-southeast1.run.app</a></li>
+      <li><b>Sign in</b> with your n8n account. If this is the very first time anyone has opened the instance, n8n will ask you to create the owner account (email + password) — this is a fresh login, separate from any old local n8n login.</li>
+      <li><b>Find a workflow</b> from the <b>Workflows</b> list on the left, or click <b>Add workflow</b> to start a new one.</li>
+      <li><b>Build or edit</b> by adding nodes to the canvas and connecting them. Click any node to configure it.</li>
+      <li><b>Connect an app</b> the first time you use it by adding a <b>credential</b> (for example, signing into Gmail or ActiveCampaign). Credentials are saved and reused across workflows.</li>
+      <li><b>Test</b> a workflow with <b>Execute workflow</b> to run it once manually and see the result of each step.</li>
+      <li><b>Turn it on</b> by toggling the workflow <b>Active</b> (top right) when you are ready for it to run on its schedule.</li>
+      <li><b>Save</b> your changes. Edits save straight to the shared database — there is nothing to deploy or re-publish.</li>
+    </ol>
+    <img src="https://placehold.co/900x400/eeeeee/37474f?text=n8n%20workflow%20builder%20screen" alt="n8n workflow builder screen">
+    <p class="img-caption">Placeholder image — replace with an actual screenshot.</p>
+  </div>
+</div>
+
+<div class="band-gray">
+  <div class="col">
+    <h2>What to Expect</h2>
+  </div>
+</div>
+<div class="band-white">
+  <div class="col">
+    <ul>
+      <li><b>Your changes are live immediately.</b> Editing a workflow, adding a credential, or changing a setting takes effect right away for everyone — no redeploy needed.</li>
+      <li><b>Scheduled workflows run on a fixed daily schedule</b> set up by your automations admin (see Known Limitations for why scheduling is handled specially).</li>
+      <li><b>The site may take a few seconds to load</b> if no one has used it recently. The service "sleeps" when idle to keep costs at zero and wakes on the first visit — the first page load or first run of the day can be slow, then it is fast.</li>
+      <li><b>Execution history is kept for 14 days</b> and then automatically cleared, so you can review recent runs but not old ones.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="band-gray">
+  <div class="col">
+    <h2>Daily Run Schedule</h2>
+  </div>
+</div>
+<div class="band-white">
+  <div class="col">
+    <p>These workflows are wired to the external scheduler and run automatically once a day, staggered a few minutes apart every morning. All times below are <b>Philippine time (PHT)</b>.</p>
+    <ul>
+      <li><b>7:00 AM</b> — LinkedIn Outbound Sales Automations</li>
+      <li><b>7:15 AM</b> — Soc Med Follow Up Sequence</li>
+      <li><b>7:30 AM</b> — Cold Leads Follow Up Sequence</li>
+      <li><b>7:45 AM</b> — LinkedIn Comments Scraping POC Enrichment</li>
+      <li><b>8:00 AM</b> — Cold Leads Scraper</li>
+      <li><b>8:15 AM</b> — Get All AC Deals</li>
+      <li><b>8:30 AM</b> — Get all AC Contacts</li>
+      <li><b>8:45 AM</b> — Get all AC Accounts</li>
+      <li><b>9:00 AM</b> — Insta Story Scraper</li>
+      <li><b>9:15 AM</b> — Batch Mailer</li>
+      <li><b>9:30 AM</b> — Sales Daily Email Notification</li>
+    </ul>
+    <p>The times are staggered so the workflows don't all fire at once. To add, remove, or change a run time, contact your automations admin — the schedule is managed outside n8n (see How It Was Built).</p>
+  </div>
+</div>
+
+<div class="band-gray">
+  <div class="col">
+    <h2>How the Daily Trigger Works</h2>
+  </div>
+</div>
+<div class="band-white">
+  <div class="col">
+    <p>Because the n8n service sleeps when idle, it can't reliably wake itself up to run a scheduled job. So the "alarm clock" lives outside n8n, in the Supabase database, and it works like this:</p>
+    <ol>
+      <li><b>A daily cron entry exists for each workflow.</b> Supabase includes a free scheduler called <b>pg_cron</b>. For every workflow above there is one cron entry — essentially a line that says "at this exact time every day, run this task." For example, the Soc Med Follow Up Sequence entry means "every day at 7:15 AM Philippine time."</li>
+      <li><b>At the set time, the cron entry fires.</b> pg_cron runs its small task automatically, every day, without anyone touching it.</li>
+      <li><b>That task sends a web request to the workflow's webhook.</b> The task uses another free Supabase tool called <b>pg_net</b> to make an HTTP call to that workflow's unique <b>Webhook Trigger</b> URL in n8n.</li>
+      <li><b>The request wakes n8n and starts the workflow.</b> The incoming call wakes the sleeping Cloud Run service (if needed) and n8n's Webhook Trigger node begins running the workflow's steps.</li>
+    </ol>
+    <p>In short: <b>Supabase's daily cron → sends a web call → n8n's Webhook Trigger → the workflow runs.</b></p>
+    <p><b>A note on time zones:</b> pg_cron keeps its schedule in <b>UTC</b> (not Philippine time), so each Philippine time above is stored as its UTC equivalent behind the scenes — for example, 7:15 AM Philippine time is saved as 23:15 UTC the day before. Your automations admin handles this conversion; you only need to think in Philippine time.</p>
+  </div>
+</div>
+
+<div class="band-gray">
+  <div class="col">
+    <h2>Known Limitations</h2>
+  </div>
+</div>
+<div class="band-white">
+  <div class="col">
+    <ul>
+      <li><b>Scheduling is not done inside n8n.</b> Because the service sleeps when idle to stay free, n8n's own built-in "Schedule Trigger" will not fire while the service is asleep. Instead, scheduled workflows use a <b>Webhook Trigger</b> that an external free scheduler (Supabase) calls at the set time each day. If you need a workflow to run on a schedule, ask your automations admin to wire it up this way rather than relying on the Schedule Trigger node.</li>
+      <li><b>Times are handled in UTC / Sydney behind the scenes.</b> When setting or discussing schedule times, confirm the intended timezone — the server's default is Sydney time and the external scheduler uses UTC, which is <b>not</b> the same as Philippine time. Your admin translates these for you.</li>
+      <li><b>Google logins may need re-connecting.</b> After the move to the cloud, Google-based credentials (Gmail, Drive, Docs, Sheets) may need to be re-authorized once. If a Google node errors on auth, reconnect its credential.</li>
+      <li><b>No email/notification when a run fails</b> unless a workflow was specifically built to send one. Check a workflow's <b>Executions</b> tab to confirm it ran.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="band-gray">
+  <div class="col">
+    <h2>How It Was Built (Architecture &amp; Tech Stack)</h2>
+  </div>
+</div>
+<div class="band-white">
+  <div class="col">
+    <p>The instance was migrated from a local Docker setup on an office PC to a fully cloud-hosted setup, so it no longer depends on any one machine being on.</p>
+    <ul>
+      <li><b>n8n (v2.22.6)</b> — the workflow automation app itself, packaged as a container image with a set of extra community nodes baked in.</li>
+      <li><b>Google Cloud Run</b> — runs the n8n container serverlessly; it scales to zero when idle (which is why it "sleeps") to keep cost at $0.</li>
+      <li><b>Supabase (PostgreSQL)</b> — the shared cloud database that stores all workflows, credentials, and settings, on the free tier.</li>
+      <li><b>Google Secret Manager</b> — securely stores sensitive keys (the encryption key and database password) so they are never hard-coded.</li>
+      <li><b>Supabase pg_cron + pg_net</b> — a free, database-driven scheduler that calls workflow webhooks at set times each day, replacing n8n's built-in scheduler.</li>
+    </ul>
+    <p><b>The daily flow:</b> the Supabase scheduler calls a workflow's webhook at its set time → this wakes the Cloud Run service and triggers the workflow → n8n runs the steps and reads/writes data in Supabase and the connected apps.</p>
+    <img src="https://placehold.co/900x400/eeeeee/37474f?text=Architecture%20diagram" alt="Architecture diagram">
+    <p class="img-caption">Placeholder image — replace with an actual screenshot.</p>
+  </div>
+</div>
+
+<div class="band-gray">
+  <div class="col">
+    <h2>Troubleshooting</h2>
+  </div>
+</div>
+<div class="band-white">
+  <div class="col">
+    <ul>
+      <li><b>The site won't load or is very slow:</b> it was probably asleep — wait a few seconds and refresh. The first load after a quiet period is always the slowest.</li>
+      <li><b>"Offline / No network connection" banner and can't save:</b> refresh the page; if it persists, contact your admin (this was a known infrastructure issue that has been fixed, so it should not recur).</li>
+      <li><b>A scheduled workflow didn't run:</b> check that it is toggled <b>Active</b>, and confirm it uses a Webhook Trigger wired to the external scheduler — the built-in Schedule Trigger will not fire reliably on this setup. Also double-check the intended timezone.</li>
+      <li><b>A Google/Gmail/Sheets step fails with an authorization error:</b> its credential likely needs re-connecting — open the credential and re-authorize it.</li>
+      <li><b>You can't tell if a workflow ran:</b> open the workflow and check its <b>Executions</b> tab (history is kept for 14 days).</li>
+    </ul>
+  </div>
+</div>
+
+<div class="band-gray">
+  <div class="col">
+    <h2>Support / Questions</h2>
+  </div>
+</div>
+<div class="band-white">
+  <div class="col">
+    <p>For access, login help, setting up a scheduled workflow, or anything that isn't working, contact <b>Julienne</b> at <a href="mailto:julienne@myadventuregroup.com.au">julienne@myadventuregroup.com.au</a>.</p>
+  </div>
+</div>
+
+<section id="h.68f0b8918457bce8_82" style="background:#ffffff;padding:8px 20px;"><div style="max-width:760px;margin:0 auto;"><hr style="border:none;border-top:1px solid #d9d9d9;margin:0;"></div></section>
+<section id="h.5a0263770fa94d5d_3" style="background:#ffffff;padding:24px 20px;"><div style="max-width:760px;margin:0 auto;"><a href="#" style="display:inline-block;font-family:'Lato',sans-serif;font-size:15px;font-weight:400;color:#ffffff;background:#37474F;padding:12px 28px;border-radius:4px;text-decoration:none;letter-spacing:0.3px;">Button label</a></div></section>
+
+<div class="band-white closing">
+  <div class="col">
+    <p>Updated by: Julienne</p>
+    <p>Last Update: 14 September 2026</p>
+  </div>
+</div>
+
+</body>
+</html>
