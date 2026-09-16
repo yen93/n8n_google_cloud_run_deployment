@@ -65,11 +65,14 @@ AUTOMATIONS / ROUTINES
   external HTTP calls to per-workflow Webhook Trigger URLs, driven by Supabase
   pg_cron + pg_net (fully free, in-stack). Each daily job fires an HTTP GET that
   both wakes the container and triggers the workflow.
-- LIVE cron jobs (cron.job in Supabase, verified 2026-09-16): 11 active, ALL
-  once-daily, staggered every 5 min from 06:00-06:50 AM Manila (stored as UTC
+- LIVE cron jobs (cron.job in Supabase, verified 2026-09-16): 11 active, all
+  staggered every 5 min from 06:00-06:50 AM Manila, MON-FRI PHT ONLY (stored as UTC
   22:00-22:50 the prior day; pg_cron runs in UTC, no DST). Rescheduled 2026-09-16
   from the earlier ~7:00-9:30 AM spread to this tighter 6 AM block (the old 9:30 AM
-  double-slot is gone). All fire an HTTP GET to a webhook, which both wakes the
+  double-slot is gone), then restricted to weekdays 2026-09-16 (service fully idle
+  on weekends). Day-of-week trap: schedules use dow 0-4 (Sun-Thu UTC), NOT 1-5 --
+  because a 22:xx UTC run is the next morning in Manila, PHT weekday = UTC weekday
+  + 1, so Mon-Fri PHT = Sun-Thu UTC. All fire an HTTP GET to a webhook, which both wakes the
   container and triggers the workflow. Live set, in run order:
     06:00 n8n-get-all-ac-deals              (jobid 7,  0 22)
     06:05 n8n-get-all-ac-contacts           (jobid 8,  5 22)
@@ -92,10 +95,11 @@ AUTOMATIONS / ROUTINES
 - KEEP-WARM WINDOW (Cloud Scheduler, added + verified 2026-09-16): 2 jobs in
   region australia-southeast1 flip the service's min-instances via the Cloud Run
   Admin API v2 so the container is guaranteed warm around the morning batch:
-    n8n-scale-up    05:50 Asia/Manila -> min-instances=1  (ON)
-    n8n-scale-down  07:05 Asia/Manila -> min-instances=0  (OFF)
+    n8n-scale-up    05:50 Mon-Fri Asia/Manila -> min-instances=1  (ON)
+    n8n-scale-down  07:05 Mon-Fri Asia/Manila -> min-instances=0  (OFF)
   Cloud Scheduler runs jobs in Asia/Manila directly (no DST / no PHT-8 math,
-  unlike pg_cron). Mechanics that were non-obvious:
+  unlike pg_cron) -- so weekday filter here is dow 1-5 (Mon-Fri PHT), whereas the
+  pg_cron jobs need 0-4. Restricted to weekdays 2026-09-16 (idle on weekends). Mechanics that were non-obvious:
     * Uses a narrow field-mask PATCH (updateMask=template.scaling.minInstanceCount)
       so it changes ONLY min-instances and preserves always-allocated CPU
       (--no-cpu-throttling). Verified: after ON, minScale=1 AND cpu-throttling=false.

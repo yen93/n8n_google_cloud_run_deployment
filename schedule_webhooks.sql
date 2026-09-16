@@ -15,6 +15,13 @@
 --   Rescheduled 2026-09-16 from the earlier 7:00-9:30 AM spread to a tighter
 --   06:00-06:50 AM Manila block, staggered every 5 min.
 --
+-- WEEKDAYS ONLY (day-of-week 0-4)
+--   Jobs run Mon-Fri PHT only (service fully idle on weekends, 2026-09-16).
+--   Because each job fires at 22:xx UTC = 06:xx the NEXT day Manila, the PHT
+--   weekday is UTC weekday + 1. So Mon-Fri PHT = Sun-Thu UTC = dow 0-4.
+--   (Do NOT write 1-5 here -- that would be Tue-Sat PHT. The Cloud Scheduler
+--   keep-warm jobs DO use 1-5 because they run in Asia/Manila, not UTC.)
+--
 -- ASSUMPTION
 --   Every webhook node is HTTP method GET with Authentication = None (matches
 --   the Soc Med Follow Up node that was inspected). If any node is set to POST,
@@ -36,77 +43,77 @@ create extension if not exists pg_net;
 -- ---------------------------------------------------------------------------
 
 -- Get All AC Deals                             | 6:00 AM  | 22:00 UTC
-select cron.schedule('n8n-get-all-ac-deals', '0 22 * * *', $$
+select cron.schedule('n8n-get-all-ac-deals', '0 22 * * 0-4', $$
   select net.http_get(
     url := 'https://n8n-659687081407.australia-southeast1.run.app/webhook/02b6362d-b828-4f40-908c-45e98a943a2b',
     timeout_milliseconds := 30000);
 $$);
 
 -- Get all AC Contacts                          | 6:05 AM  | 22:05 UTC
-select cron.schedule('n8n-get-all-ac-contacts', '5 22 * * *', $$
+select cron.schedule('n8n-get-all-ac-contacts', '5 22 * * 0-4', $$
   select net.http_get(
     url := 'https://n8n-659687081407.australia-southeast1.run.app/webhook/8388b39d-9c99-494e-9991-2fefb0081a87',
     timeout_milliseconds := 30000);
 $$);
 
 -- Get all AC Accounts                          | 6:10 AM  | 22:10 UTC
-select cron.schedule('n8n-get-all-ac-accounts', '10 22 * * *', $$
+select cron.schedule('n8n-get-all-ac-accounts', '10 22 * * 0-4', $$
   select net.http_get(
     url := 'https://n8n-659687081407.australia-southeast1.run.app/webhook/ae6f429c-99a2-428c-91f9-db2cb62c16c6',
     timeout_milliseconds := 30000);
 $$);
 
 -- LinkedIn Outbound Sales Automations          | 6:15 AM  | 22:15 UTC
-select cron.schedule('n8n-linkedin-outbound-sales', '15 22 * * *', $$
+select cron.schedule('n8n-linkedin-outbound-sales', '15 22 * * 0-4', $$
   select net.http_get(
     url := 'https://n8n-659687081407.australia-southeast1.run.app/webhook/50798cda-7448-45bf-9168-d887756fb8c8',
     timeout_milliseconds := 30000);
 $$);
 
 -- Soc Med Follow Up Sequence                   | 6:20 AM  | 22:20 UTC
-select cron.schedule('n8n-soc-med-follow-up', '20 22 * * *', $$
+select cron.schedule('n8n-soc-med-follow-up', '20 22 * * 0-4', $$
   select net.http_get(
     url := 'https://n8n-659687081407.australia-southeast1.run.app/webhook/be8d0706-4150-4358-8e0d-be4108b88615',
     timeout_milliseconds := 30000);
 $$);
 
 -- Cold Leads Follow Up Sequence                | 6:25 AM  | 22:25 UTC
-select cron.schedule('n8n-cold-leads-follow-up', '25 22 * * *', $$
+select cron.schedule('n8n-cold-leads-follow-up', '25 22 * * 0-4', $$
   select net.http_get(
     url := 'https://n8n-659687081407.australia-southeast1.run.app/webhook/cf04a824-5636-40ec-b75c-bb5d5ff6743c',
     timeout_milliseconds := 30000);
 $$);
 
 -- LinkedIn Comments Scraping POC Enrichment    | 6:30 AM  | 22:30 UTC
-select cron.schedule('n8n-linkedin-comments-enrichment', '30 22 * * *', $$
+select cron.schedule('n8n-linkedin-comments-enrichment', '30 22 * * 0-4', $$
   select net.http_get(
     url := 'https://n8n-659687081407.australia-southeast1.run.app/webhook/e7e0b196-e1a4-4340-8af7-c6eb93509e46',
     timeout_milliseconds := 30000);
 $$);
 
 -- Cold Leads Scraper                           | 6:35 AM  | 22:35 UTC
-select cron.schedule('n8n-cold-leads-scraper', '35 22 * * *', $$
+select cron.schedule('n8n-cold-leads-scraper', '35 22 * * 0-4', $$
   select net.http_get(
     url := 'https://n8n-659687081407.australia-southeast1.run.app/webhook/f5ca40e6-06cf-42a0-a829-0a938c03bebc',
     timeout_milliseconds := 30000);
 $$);
 
 -- Insta Story Scraper                          | 6:40 AM  | 22:40 UTC
-select cron.schedule('n8n-insta-story-scraper', '40 22 * * *', $$
+select cron.schedule('n8n-insta-story-scraper', '40 22 * * 0-4', $$
   select net.http_get(
     url := 'https://n8n-659687081407.australia-southeast1.run.app/webhook/c2fa45b3-49b1-496b-9dd0-8193897caa2f',
     timeout_milliseconds := 30000);
 $$);
 
 -- Insta Story Scraper: Log to sheet and notify Liv | 6:45 AM | 22:45 UTC
-select cron.schedule('n8n-insta-story-scraper-log-notify-liv', '45 22 * * *', $$
+select cron.schedule('n8n-insta-story-scraper-log-notify-liv', '45 22 * * 0-4', $$
   select net.http_get(
     url := 'https://n8n-659687081407.australia-southeast1.run.app/webhook/57fe4813-a476-4f26-b27b-e011e5c17092',
     timeout_milliseconds := 30000);
 $$);
 
 -- Sales Daily Email Notification               | 6:50 AM  | 22:50 UTC
-select cron.schedule('n8n-sales-daily-email-notification', '50 22 * * *', $$
+select cron.schedule('n8n-sales-daily-email-notification', '50 22 * * 0-4', $$
   select net.http_get(
     url := 'https://n8n-659687081407.australia-southeast1.run.app/webhook/7dc5b0a7-071a-4a66-99e4-ab48cc23aeff',
     timeout_milliseconds := 30000);

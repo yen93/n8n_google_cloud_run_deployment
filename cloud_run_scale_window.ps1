@@ -52,9 +52,13 @@ $SA_EMAIL     = "$SA_NAME@$PROJECT.iam.gserviceaccount.com"
 $SCHED_AGENT  = "service-$PROJECT_NUM@gcp-sa-cloudscheduler.iam.gserviceaccount.com"
 $RUNTIME_SA   = "$PROJECT_NUM-compute@developer.gserviceaccount.com"  # n8n runtime SA
 
-# ON/OFF times are in Asia/Manila (no DST). cron = "min hour * * *".
-$ON_SCHEDULE  = "50 5 * * *"   # 05:50 Manila -> min-instances = 1
-$OFF_SCHEDULE = "5 7 * * *"    # 07:05 Manila -> min-instances = 0
+# ON/OFF times are in Asia/Manila (no DST). cron = "min hour * * dow".
+# Weekdays only (1-5 = Mon-Fri): keep the service fully idle on weekends PHT.
+# NOTE: because Scheduler runs in Asia/Manila, dow 1-5 IS Mon-Fri PHT directly --
+# unlike the pg_cron webhook jobs, which run at 22:xx UTC and must use dow 0-4 to
+# hit Mon-Fri PHT mornings (see schedule_webhooks.sql).
+$ON_SCHEDULE  = "50 5 * * 1-5"   # 05:50 Mon-Fri Manila -> min-instances = 1
+$OFF_SCHEDULE = "5 7 * * 1-5"    # 07:05 Mon-Fri Manila -> min-instances = 0
 $TZ           = "Asia/Manila"
 
 $URI = "https://run.googleapis.com/v2/projects/$PROJECT/locations/$REGION/services/$SERVICE`?updateMask=template.scaling.minInstanceCount"

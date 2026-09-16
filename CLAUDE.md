@@ -74,14 +74,20 @@ See `DEPLOYMENT.md` for the full runbook and `as_built.txt` for the current inve
      (UTC+8), so an n8n Schedule Trigger "10:05" = 10:05 Sydney = 8:05 AM Manila.
      `pg_cron` runs in UTC and does NOT do DST, so write jobs at PHT-8
      (10:05 Manila = 02:05 UTC = `'5 2 * * *'`).
+   - Day-of-week trap (weekday scheduling): the daily jobs run at 22:xx UTC =
+     06:xx the NEXT day Manila, so PHT weekday = UTC weekday + 1. To run Mon-Fri
+     PHT (weekends idle, set 2026-09-16) the pg_cron dow must be `0-4` (Sun-Thu
+     UTC), NOT `1-5`. But the Cloud Scheduler keep-warm jobs (gotcha #7) DO use
+     `1-5` because they run in Asia/Manila, not UTC. Same intent, different dow.
    - `pg_net` is async fire-and-forget: cron reports success once the request is
      QUEUED, not once n8n answers. Confirm real HTTP status in `net._http_response`,
      not just `cron.job_run_details`. Cold starts are slow — set
      `timeout_milliseconds := 30000` on the calls.
 7. **Keep-warm window: two Cloud Scheduler jobs toggle `min-instances` (added
-   2026-09-16).** `n8n-scale-up` (05:50 Manila) sets min=1,
-   `n8n-scale-down` (07:05 Manila) sets min=0, bracketing the 06:00–06:50 pg_cron
-   batch so the first run isn't a cold start. Set up by `cloud_run_scale_window.ps1`;
+   2026-09-16).** `n8n-scale-up` (05:50 Mon-Fri Manila) sets min=1,
+   `n8n-scale-down` (07:05 Mon-Fri Manila) sets min=0, bracketing the 06:00–06:50
+   pg_cron batch so the first run isn't a cold start. Weekday-only (dow 1-5) since
+   2026-09-16 — weekends fully idle. Set up by `cloud_run_scale_window.ps1`;
    Scheduler runs jobs in `Asia/Manila` directly (no PHT-8 math). Non-obvious traps
    that cost real time — do NOT relearn them:
    - Change min-instances via a **narrow field-mask PATCH**

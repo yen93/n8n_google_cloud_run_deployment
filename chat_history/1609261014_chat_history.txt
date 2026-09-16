@@ -1,0 +1,119 @@
+================================================================================
+CHAT HISTORY EXPORT — 2026-09-16 (part 2)
+Session: Continuation of 1609260936 — manual pause/unpause walkthrough, verified
+real max-instances, checked free-tier hours remaining, then made the service
+fully idle on weekends PH time (keep-warm + pg_cron restricted to weekdays).
+================================================================================
+
+NOTE: This continues the same session already exported in
+1609260936_chat_history.txt (which covered the Google Sheet, the 6 AM reschedule,
+and provisioning the Cloud Scheduler keep-warm window). This file picks up after
+that first /dcp.
+
+--------------------------------------------------------------------------------
+USER:
+Walk me through the nav steps to manually pause/unpause the Cloud Run service, in
+case.
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Clarified Cloud Run has no literal "pause" — the levers are min-instances=1
+(warm) vs 0 (scale-to-zero), and even at 0 the service still wakes on webhooks.
+Gave two paths: (A) the safest — Force-run the existing scheduler jobs
+(n8n-scale-up = wake, n8n-scale-down = sleep) from the Cloud Scheduler console or
+via `gcloud scheduler jobs run`; (B) edit min-instances directly on the service,
+warning to keep CPU "always allocated". Also covered a true hard-stop (remove the
+allUsers invoker) for emergencies only.
+
+--------------------------------------------------------------------------------
+USER:
+I don't see the Edit button. [screenshot of the newer Cloud Run UI]
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Recognized the redesigned console: no "Edit & Deploy New Revision" — instead a
+"Redeploy" button (top-right) and a "Scaling" tab. Pointed to the Scaling tab for
+min/max instances. Noted the screenshot already confirmed Billing = "Instance-based"
+= always-allocated CPU intact, and that revisions n8n-00012/00013 (13–14 min old)
+looked like the result of the user force-running both scheduler jobs.
+
+--------------------------------------------------------------------------------
+USER:
+[screenshot of the Scaling tab: Min=0, Max=20, Instance-based]
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Read off state: Minimum instances = 0 (currently asleep), Billing Instance-based
+(CPU safe). Gave pause/unpause steps (set Minimum 1/0, keep Instance-based,
+Redeploy). Flagged a trap: the tab shows Maximum = 20, but the service is meant to
+be capped at 1 — deploying from that tab as-is could raise the cap to 20, so set
+Max to 1 first. Reiterated the scheduler Force-run path avoids that entirely.
+
+--------------------------------------------------------------------------------
+USER:
+Verify the real max-instances.
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Queried the service: serving revision n8n-00013-rpm has minScale=0, maxScale=1,
+and the service-level scaling block is null. Conclusion: the real enforced cap is
+1; the "20" is just the new UI's default placeholder, not applied. Cautioned that
+deploying from the Scaling tab would newly write a service-level config, so set
+Max=1 there if ever used.
+
+--------------------------------------------------------------------------------
+USER:
+Check how many hours are left in the allotted free 50 hrs.
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Pulled billable_instance_time month-to-date from Cloud Monitoring (Monitoring API
+via REST, summed across all Cloud Run services since the free tier is shared).
+As of Sep 16 02:02 UTC: total 72,756 s = 20.21 instance-hours (n8n 20.16,
+dashboard 0.02, unlabeled 0.03) → ~29.8 of 50 vCPU-hr remaining at mid-month.
+Explained the keep-warm window (starting Sep 17) adds only ~10–20 min/day net
+because it mostly overlaps the existing 06:00–06:50 batch uptime; rough month-end
+projection ~40 hr, likely under 50 but with less cushion. Noted the Sep-1-UTC
+start approximation and that today's testing added a small one-off. Offered levers
+to trim (tighten window / drop pre-warm).
+
+--------------------------------------------------------------------------------
+USER:
+Is there a way to auto-off the service on weekends PH time?
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Explained the two schedules involved (keep-warm Scheduler jobs in Manila TZ; the
+11 pg_cron jobs in UTC) and asked via AskUserQuestion whether "off on weekends"
+meant just the keep-warm or the workflow runs too. User chose "Fully idle
+weekends" (both).
+
+Implemented:
+  - Updated both Cloud Scheduler jobs to Mon-Fri Manila: `50 5 * * 1-5` and
+    `5 7 * * 1-5`. Verified.
+  - Highlighted the day-of-week trap: pg_cron jobs run at 22:xx UTC = next-morning
+    Manila, so PHT weekday = UTC weekday + 1; Mon-Fri PHT = Sun-Thu UTC = dow 0-4
+    (NOT 1-5). Scheduler uses 1-5 only because it runs in Manila TZ.
+  - Ran the pg_cron update via the Supabase connector (execute_sql on project
+    uwsncuowtzydylfabikj): cron.alter_job on all 11 jobs to `<min> 22 * * 0-4`.
+    Verified all 11 now show `0-4` and remain active.
+  - Synced repo docs: schedule_webhooks.sql (11 schedules -> 0-4 + WEEKDAYS header
+    note), cloud_run_scale_window.ps1 (ON/OFF -> 1-5 with the dow-difference
+    comment), as_built.txt (pg_cron + keep-warm entries note weekday-only),
+    CLAUDE.md (added the day-of-week trap to the pg_cron timezone gotcha and to the
+    keep-warm gotcha #7).
+  - Noted the free-tier bonus (dropping ~8–9 weekend mornings/month).
+
+--------------------------------------------------------------------------------
+USER:
+run /dcp
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Saved this transcript, updated as_built.txt / CLAUDE.md (done in-session), left
+the two console screenshots out of the commit as incidental artifacts, and
+committed + pushed the doc/script changes to origin/master.
+
+================================================================================
+END OF EXPORT
+================================================================================
