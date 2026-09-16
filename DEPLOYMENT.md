@@ -41,3 +41,29 @@ docker push australia-southeast1-docker.pkg.dev/claudegwscli-502400/cloud-run-so
 gcloud run services update n8n --region=australia-southeast1 --image=australia-southeast1-docker.pkg.dev/claudegwscli-502400/cloud-run-source-deploy/n8n:2.22.6
 ```
 Workflow/credential edits made in the UI persist to Supabase directly — no redeploy needed.
+
+## Keep-warm window (Cloud Scheduler)
+Guarantees a warm instance around the PH morning batch so the 06:00 job doesn't pay a
+cold start, then releases the service to scale-to-zero. Provisioned by
+`cloud_run_scale_window.ps1` (idempotent). Two Cloud Scheduler jobs flip `min-instances`
+via the **Cloud Run Admin API v2**:
+- `n8n-scale-up`   — **05:50 Asia/Manila** → `min-instances=1` (ON)
+- `n8n-scale-down` — **07:05 Asia/Manila** → `min-instances=0` (OFF)
+
+Notes:
+- **Why the Admin API, not `gcloud run services update`:** Scheduler can only make HTTP
+  calls, and a narrow field-mask PATCH (`updateMask=template.scaling.minInstanceCount`)
+  changes *only* min-instances and preserves everything else — so it can't drop the
+  always-allocated CPU (gotcha above). If you ever toggle min-instances by hand with
+  `gcloud run services update`, you MUST re-pass `--no-cpu-throttling`.
+- **Auth:** a dedicated SA `cloud-run-scaler@…` holds `roles/run.admin` **scoped to the
+  `n8n` service only**; the Cloud Scheduler service agent has token-creator on it.
+- **Timezone:** Cloud Scheduler runs jobs in `Asia/Manila` directly (no DST, no PHT-8
+  math — unlike pg_cron, which is UTC). The window brackets the 06:00–06:50 pg_cron
+  webhook batch in `schedule_webhooks.sql`.
+- **Cost:** $0 — 2 of the 3 free Scheduler jobs; min-instances=1 for ~75 min/day is
+  within the Cloud Run free tier.
+- **Run/verify:** `gcloud scheduler jobs run n8n-scale-up --location=australia-southeast1`
+  then `gcloud run services describe n8n --region=australia-southeast1 --format="yaml(spec.template)"`
+  → expect `minInstanceCount: 1` **and** `run.googleapis.com/cpu-throttling: 'false'` still set.
+- Teardown block is at the bottom of `cloud_run_scale_window.ps1`.

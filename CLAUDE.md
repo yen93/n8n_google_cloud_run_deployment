@@ -78,6 +78,25 @@ See `DEPLOYMENT.md` for the full runbook and `as_built.txt` for the current inve
      QUEUED, not once n8n answers. Confirm real HTTP status in `net._http_response`,
      not just `cron.job_run_details`. Cold starts are slow — set
      `timeout_milliseconds := 30000` on the calls.
+7. **Keep-warm window: two Cloud Scheduler jobs toggle `min-instances` (added
+   2026-09-16).** `n8n-scale-up` (05:50 Manila) sets min=1,
+   `n8n-scale-down` (07:05 Manila) sets min=0, bracketing the 06:00–06:50 pg_cron
+   batch so the first run isn't a cold start. Set up by `cloud_run_scale_window.ps1`;
+   Scheduler runs jobs in `Asia/Manila` directly (no PHT-8 math). Non-obvious traps
+   that cost real time — do NOT relearn them:
+   - Change min-instances via a **narrow field-mask PATCH**
+     (`updateMask=template.scaling.minInstanceCount`), NOT `gcloud run services
+     update` — the mask preserves everything else, so it can't drop
+     `--no-cpu-throttling` (gotcha #1). If you ever use gcloud by hand, re-pass it.
+   - This gcloud build's `scheduler jobs --http-method` has **no PATCH** option.
+     POST instead with header `X-HTTP-Method-Override: PATCH` (googleapis.com honors
+     it → 200). And pass the JSON via `--message-body-from-file` (inline JSON
+     mangles through `gcloud.cmd` on Windows).
+   - The scaler SA needs BOTH `roles/run.admin` on the service AND
+     `roles/iam.serviceAccountUser` (actAs) on the runtime SA
+     `659687081407-compute@` — run.admin alone gives a silent **403** (the PATCH
+     deploys a new revision as that runtime SA). Check failures in Cloud Logging
+     (`resource.type="cloud_scheduler_job"`), not the job's own status.
 
 ## Build & redeploy
 ```

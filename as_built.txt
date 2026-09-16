@@ -1,6 +1,6 @@
 ================================================================================
 AS-BUILT — n8n on Google Cloud Run
-Last updated: 2026-09-14
+Last updated: 2026-09-16
 ================================================================================
 
 CONTAINER IMAGE
@@ -44,6 +44,12 @@ ACCESS / OWNERSHIP
 - Billing account 015621-F89AA0-E78632, roles/billing.admin: julienne@ and
   james@myadventuregroup.com.au (james added 2026-09-14, so he can see/control
   billing). Billing enabled on the project.
+- Non-human SA cloud-run-scaler@claudegwscli-502400.iam.gserviceaccount.com
+  (created 2026-09-16) — used by Cloud Scheduler to toggle the n8n keep-warm
+  window. IAM: roles/run.admin scoped to the n8n SERVICE only; roles/
+  iam.serviceAccountUser (actAs) on the runtime SA 659687081407-compute@; and the
+  Cloud Scheduler agent service-659687081407@gcp-sa-cloudscheduler holds
+  roles/iam.serviceAccountTokenCreator on it. See AUTOMATIONS below.
 
 DATA STORES
 - Supabase Postgres holds all n8n state: 52 workflows, 26 credentials (migrated
@@ -59,22 +65,56 @@ AUTOMATIONS / ROUTINES
   external HTTP calls to per-workflow Webhook Trigger URLs, driven by Supabase
   pg_cron + pg_net (fully free, in-stack). Each daily job fires an HTTP GET that
   both wakes the container and triggers the workflow.
-- LIVE cron jobs (cron.job in Supabase, verified 2026-09-14): 11 active, ALL
-  once-daily, staggered ~7:00-9:30 AM Manila (stored as UTC; pg_cron runs in UTC,
-  no DST). Two share the 9:30 AM slot (n8n-sales-daily-email-notification and
-  "Insta Story Scraper: Log to sheet and notify Liv"). All fire an HTTP GET to a
-  webhook, which both wakes the container and triggers the workflow.
+- LIVE cron jobs (cron.job in Supabase, verified 2026-09-16): 11 active, ALL
+  once-daily, staggered every 5 min from 06:00-06:50 AM Manila (stored as UTC
+  22:00-22:50 the prior day; pg_cron runs in UTC, no DST). Rescheduled 2026-09-16
+  from the earlier ~7:00-9:30 AM spread to this tighter 6 AM block (the old 9:30 AM
+  double-slot is gone). All fire an HTTP GET to a webhook, which both wakes the
+  container and triggers the workflow. Live set, in run order:
+    06:00 n8n-get-all-ac-deals              (jobid 7,  0 22)
+    06:05 n8n-get-all-ac-contacts           (jobid 8,  5 22)
+    06:10 n8n-get-all-ac-accounts           (jobid 9,  10 22)
+    06:15 n8n-linkedin-outbound-sales       (jobid 21, 15 22)
+    06:20 n8n-soc-med-follow-up             (jobid 3,  20 22)
+    06:25 n8n-cold-leads-follow-up          (jobid 4,  25 22)
+    06:30 n8n-linkedin-comments-enrichment  (jobid 5,  30 22)
+    06:35 n8n-cold-leads-scraper            (jobid 6,  35 22)
+    06:40 n8n-insta-story-scraper           (jobid 10, 40 22)
+    06:45 Insta Story Scraper: Log to sheet and notify Liv (jobid 14, 45 22)
+    06:50 n8n-sales-daily-email-notification (jobid 12, 50 22)
+  - Reconciled: n8n-linkedin-outbound-sales IS live (jobid 21, 06:15) — the earlier
+    "confirm if it should be scheduled" discrepancy is resolved.
+  - n8n-batch-mailer is NOT in the live set (was in an earlier snapshot at 09:15;
+    absent as of 2026-09-16). Add a cron.schedule() block if it should run again.
   - The 2 intraday-recurring jobs (Email Handling Agent every 5 min, Action Items
     Automation every 15 min, 7 AM-4 PM) were REMOVED — those workflows were moved
     to a local Docker n8n. This is what dropped the cost (no more ~9 h/day uptime).
-  - Discrepancy to reconcile: the live set does NOT include
-    n8n-linkedin-outbound-sales (LinkedIn Outbound Sales, 7:00 AM) — either not
-    added or later removed; confirm if it should be scheduled.
-- scripts/schedule_webhooks.sql (repo root) — the reference script that created
-  the jobs. STALE vs live: it still contains the intraday section (Email Handling
-  Agent / Action Items) which is no longer wanted, and its 12th daily job is named
-  n8n-insta-story-scraper-log-notify-liv (live job uses the friendly name). Re-run
-  it only after pruning the intraday section, or it will recreate the dead jobs.
+- KEEP-WARM WINDOW (Cloud Scheduler, added + verified 2026-09-16): 2 jobs in
+  region australia-southeast1 flip the service's min-instances via the Cloud Run
+  Admin API v2 so the container is guaranteed warm around the morning batch:
+    n8n-scale-up    05:50 Asia/Manila -> min-instances=1  (ON)
+    n8n-scale-down  07:05 Asia/Manila -> min-instances=0  (OFF)
+  Cloud Scheduler runs jobs in Asia/Manila directly (no DST / no PHT-8 math,
+  unlike pg_cron). Mechanics that were non-obvious:
+    * Uses a narrow field-mask PATCH (updateMask=template.scaling.minInstanceCount)
+      so it changes ONLY min-instances and preserves always-allocated CPU
+      (--no-cpu-throttling). Verified: after ON, minScale=1 AND cpu-throttling=false.
+    * This gcloud build can't POST method PATCH from Scheduler, so the jobs POST
+      with header X-HTTP-Method-Override: PATCH (googleapis.com honors it -> 200).
+    * Body passed via --message-body-from-file (inline JSON mangles on Windows).
+  Reverses the earlier "Cloud Scheduler deliberately avoided to keep $0" stance —
+  still $0 (2 of 3 free Scheduler jobs; min=1 ~75 min/day is within Cloud Run free
+  tier). Provisioning captured in cloud_run_scale_window.ps1 (repo root, idempotent,
+  has a teardown block). IAM for the cloud-run-scaler SA: see ACCESS / OWNERSHIP.
+- schedule_webhooks.sql (repo root) — the reference script that creates the jobs.
+  Updated 2026-09-16 to match the live set: the 11 daily jobs carry the new 6 AM
+  UTC schedules, and the stale intraday section (Email Handling Agent / Action
+  Items) plus the unscheduled n8n-batch-mailer block were pruned to a NOT-SCHEDULED
+  reference note so re-running no longer recreates dead jobs. Its 12th daily job is
+  still named n8n-insta-story-scraper-log-notify-liv while the live job uses the
+  friendly name "Insta Story Scraper: Log to sheet and notify Liv" — re-running
+  cron.schedule() with the script name would create a SECOND job, not update the
+  live one; unschedule one of the two if that happens.
 - COST (Cloud Run, always-allocated 1 vCPU + 1 GiB): now that only once-daily jobs
   remain, container uptime is minimal (~daily 7-9:30 batch), so ~$0-3/month
   (mostly within the free tier). Was heading to ~$12-18/month with the intraday

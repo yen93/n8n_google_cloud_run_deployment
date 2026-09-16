@@ -1,0 +1,142 @@
+================================================================================
+CHAT HISTORY EXPORT — 2026-09-16
+Session: Built a Google Sheet of the n8n webhook cron jobs, rescheduled the 11
+pg_cron jobs to a new 6 AM Manila block, synced the repo docs, then provisioned +
+verified a Cloud Scheduler keep-warm window (min-instances 1<->0). Document/push.
+================================================================================
+
+--------------------------------------------------------------------------------
+USER:
+Create a Google Sheet for a pasted JSON array of 12 n8n webhook cron jobs
+(jobid, jobname, schedule, url, active).
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Created a Google Sheet "n8n Webhook Schedules" via the Google Drive connector
+(uploaded CSV -> converted to a Sheet). Kept the raw fields and added derived
+run_time_utc + run_time_pht (UTC+8) columns since the pg_cron jobs are written in
+UTC. Flagged that jobid 12 and jobid 14 both fire at 30 1 * * * (09:30 PHT), and
+that all jobs were active. Returned the Sheet URL.
+
+--------------------------------------------------------------------------------
+USER:
+Added a new_ph_sched (AM) column to the sheet. Create a single Supabase-editor
+script to update the jobs accordingly. Don't run it — I'll execute it myself.
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Read the sheet back via the Drive connector. It now had 11 rows (batch-mailer /
+jobid 11 dropped) with a new_ph_sched column of 06:00–06:50 Manila in 5-min steps.
+Converted each PHT time to a UTC cron (PHT-8) and produced a paste-ready script
+using cron.alter_job(job_id, schedule => '...') so each job's command/URL stays
+intact. Flagged that jobid 11 (n8n-batch-mailer) wasn't in the sheet so it was
+left alone, and noted the times land at 22:00–22:50 UTC (evening prior in UTC =
+same Manila morning).
+
+--------------------------------------------------------------------------------
+USER:
+Pasted the post-run verification JSON (11 jobs at 0/5/10/15/20/25/30/35/40/45/50
+past 22:00 UTC, all active).
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Confirmed all 11 schedules matched the intended PHT times, the old 09:30 double-
+fire (jobs 12 & 14) was gone, and jobid 11 was correctly absent. Offered to sync
+the repo files (schedule_webhooks.sql, as_built.txt) which still described the old
+evening schedule.
+
+--------------------------------------------------------------------------------
+USER:
+Yes, update the repo files to match.
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Rewrote schedule_webhooks.sql: 11 daily jobs at 22:00–22:50 UTC (06:00–06:50
+Manila) in run order, updated the TIMEZONE header, and pruned the stale intraday
+section (Email Handling / Action Items) and the unscheduled n8n-batch-mailer block
+into a clearly-labelled "NOT SCHEDULED (reference)" note so re-running no longer
+recreates dead jobs. Updated as_built.txt: bumped Last updated to 2026-09-16,
+rewrote the LIVE cron jobs section with the full 11-job table at new times,
+reconciled that n8n-linkedin-outbound-sales IS live (jobid 21, 06:15), noted
+n8n-batch-mailer is not in the live set, and changed the script note from "STALE"
+to "Updated 2026-09-16 to match live" (keeping the log-notify-liv job-name mismatch
+caveat). Did not commit.
+
+--------------------------------------------------------------------------------
+USER:
+Can we set an automation to auto turn the whole Cloud Run service on before 6am
+and pause/off after 7am PH time?
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Entered plan mode. Ran one Explore agent over DEPLOYMENT.md / CLAUDE.md /
+as_built.txt and confirmed: service n8n, project claudegwscli-502400 (number
+659687081407), region australia-southeast1, currently min-instances=0 /
+max-instances=1 / CPU always-allocated; health endpoint /n8n-health; no existing
+Cloud Scheduler or gcloud-scaling automation; the project had DELIBERATELY avoided
+Cloud Scheduler to stay $0.
+
+Explained Cloud Run has no literal "pause" — only keep-warm (min-instances=1) and
+scale-to-zero. Presented two $0 options and asked which via AskUserQuestion:
+(A) a pg_cron warm-up ping at 05:55 (no new infra), or (B) two Cloud Scheduler
+jobs toggling min-instances 1<->0 via the Cloud Run Admin API. User chose (B).
+
+Wrote the plan to the plan file: 05:50 Manila -> min=1, 07:05 Manila -> min=0;
+a dedicated least-privilege SA cloud-run-scaler with run.admin scoped to the
+service; a narrow field-mask PATCH (updateMask=template.scaling.minInstanceCount)
+so always-allocated CPU is preserved; Asia/Manila timezone (no PHT-8 math); $0 in
+free tier; plus a reference PowerShell script and doc updates. User approved.
+
+--------------------------------------------------------------------------------
+ASSISTANT (implementation):
+Wrote cloud_run_scale_window.ps1 and added a "Keep-warm window (Cloud Scheduler)"
+section to DEPLOYMENT.md. First gcloud call failed with "Reauthentication failed.
+cannot prompt during non-interactive execution" — asked the user to re-login.
+
+--------------------------------------------------------------------------------
+USER:
+Ran `gcloud auth login` (re-authenticated as julienne@myadventuregroup.com.au).
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Provisioned live, step by step, hitting and solving several Windows/gcloud snags:
+  - Enabled cloudscheduler.googleapis.com. `gcloud beta services identity create`
+    failed (beta component not installed, can't add non-interactively) — worked
+    around by granting the token-creator role to the deterministic scheduler agent
+    address directly.
+  - Created SA cloud-run-scaler; granted roles/run.admin scoped to the n8n service.
+  - Granted the Cloud Scheduler agent (service-659687081407@gcp-sa-cloudscheduler)
+    roles/iam.serviceAccountTokenCreator on the SA.
+  - First job-create failed: this gcloud build's --http-method rejects PATCH. Fixed
+    by POSTing with header X-HTTP-Method-Override: PATCH (googleapis.com honors it).
+  - Passed the JSON body via --message-body-from-file (inline JSON mangles through
+    gcloud.cmd on Windows). Created both jobs (n8n-scale-up 05:50, n8n-scale-down
+    07:05, Asia/Manila).
+  - Manual test of scale-up returned 403 PERMISSION_DENIED (seen in Cloud Logging).
+    Root cause: updating the service deploys a new revision as the runtime SA, so
+    the scaler needed roles/iam.serviceAccountUser (actAs) on the compute runtime
+    SA 659687081407-compute@. Granted it; re-fired -> HTTP 200.
+  - Verified end-to-end: after ON, minScale=1 AND cpu-throttling=false (always-
+    allocated CPU preserved); fired scale-down -> HTTP 200, minScale=0. Left the
+    service at rest (min=0). Both jobs ENABLED; first live fire Sep 17 05:50 PHT.
+
+Corrected cloud_run_scale_window.ps1 to match what actually worked (POST +
+method-override header, body-from-file, the actAs grant, skip beta identity
+create). Updated as_built.txt: added the cloud-run-scaler SA + its IAM under
+ACCESS/OWNERSHIP and a KEEP-WARM WINDOW entry under AUTOMATIONS (documenting the
+Manila-timezone jobs, the field-mask/CPU-preservation, the POST-override and
+body-file quirks, and that this reverses the "Cloud Scheduler avoided" stance,
+still $0). Offered to run /dcp.
+
+--------------------------------------------------------------------------------
+USER:
+run /dcp
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Saved this chat transcript, updated as_built.txt (already reflecting the session's
+changes), reviewed CLAUDE.md, and committed + pushed to origin/master.
+
+================================================================================
+END OF EXPORT
+================================================================================
