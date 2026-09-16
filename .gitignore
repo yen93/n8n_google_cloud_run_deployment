@@ -16,3 +16,6 @@ node_modules/
 # OS / editor cruft
 .DS_Store
 Thumbs.db
+
+# Local session artifacts (console screenshots etc.) — not part of the repo
+screenshots/
