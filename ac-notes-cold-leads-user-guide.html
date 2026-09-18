@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AC Notes Automation — Cold Leads Follow-up Sequence — User Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'Lato', Arial, sans-serif; background: #ffffff; }
+  .col { max-width: 760px; margin: 0 auto; padding: 32px 20px; }
+  .header-band {
+    background: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url(https://ssl.gstatic.com/atari/images/simple-header-blended-small.png) center/cover, #37474F;
+    min-height: 320px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 20px;
+  }
+  .header-band h1 {
+    color: #ffffff;
+    font-family: 'Lato', sans-serif;
+    font-weight: 300;
+    font-size: 44px;
+    letter-spacing: 0.5px;
+    margin: 0 0 12px 0;
+    line-height: 1.2;
+  }
+  .header-band .subtitle {
+    color: #ffffff;
+    font-family: 'Lato', sans-serif;
+    font-weight: 300;
+    font-size: 18px;
+    margin: 0;
+    opacity: 0.9;
+  }
+  .intro-band {
+    background: #323232;
+  }
+  .intro-band p {
+    color: #ffffff;
+    font-family: 'Lato', sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    margin: 0;
+  }
+  .header-strip {
+    background: #F2F2F2;
+  }
+  .header-strip .col { padding: 32px 20px; }
+  .header-strip h2 {
+    color: #37474F;
+    font-family: 'Lato', sans-serif;
+    font-weight: 400;
+    font-size: 26px;
+    margin: 0;
+  }
+  .content-band {
+    background: #ffffff;
+  }
+  .content-band h3 {
+    color: #37474F;
+    font-family: 'Lato', sans-serif;
+    font-weight: 700;
+    font-size: 19px;
+    margin: 24px 0 8px 0;
+  }
+  .content-band p {
+    color: #212121;
+    font-family: 'Lato', sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    margin: 0 0 16px 0;
+  }
+  .content-band ul, .content-band ol {
+    color: #212121;
+    font-family: 'Lato', sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    padding-left: 24px;
+    margin: 0 0 16px 0;
+  }
+  .content-band li { margin-bottom: 10px; }
+  .content-band a { color: #37474F; text-decoration: underline; }
+  .content-band code {
+    background: #F2F2F2;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 14px;
+  }
+  .placeholder-img {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    margin: 8px 0 4px 0;
+    border: 1px solid #e0e0e0;
+  }
+  .placeholder-caption {
+    color: #757575;
+    font-family: 'Lato', sans-serif;
+    font-size: 13px;
+    font-style: italic;
+    margin: 0 0 16px 0;
+  }
+  .closing-band p {
+    color: #212121;
+    font-family: 'Lato', sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    margin: 0 0 4px 0;
+  }
+</style>
+</head>
+<body>
+
+<div class="header-band">
+  <div>
+    <h1>AC Notes Automation — Cold Leads Follow-up Sequence</h1>
+    <p class="subtitle">User Guide</p>
+  </div>
+</div>
+
+<div class="intro-band">
+  <div class="col">
+    <p>This automation keeps your ActiveCampaign deals up to date with the Cold Leads outreach follow-up email sequence. Every weekday morning it checks which sequence emails have gone out and automatically writes a note onto the matching deal in ActiveCampaign — so anyone looking at a deal can see, at a glance, exactly which follow-up emails a cold lead has received, without anyone logging notes by hand.</p>
+  </div>
+</div>
+
+<div class="header-strip">
+  <div class="col"><h2>What This Is</h2></div>
+</div>
+<div class="content-band">
+  <div class="col">
+    <p>This is a hands-off, scheduled automation that runs inside the MAG team's n8n workflow tool. The Cold Leads outreach sequence sends prospects up to five emails — an intro email, then four follow-ups. Each of those sends is tracked in a table. This automation reads that table each morning and, for every lead who has been sent a given email but doesn't yet have a note recorded for it, it adds a note to that person's <b>deal</b> in ActiveCampaign marking the stage. It then flags the record as done so the same note is never added twice.</p>
+    <p>In short: it turns "email 3 was sent to this cold lead" into a visible note on their ActiveCampaign deal, automatically, for all five stages of the sequence. It is the Cold Leads counterpart to the Soc Med AC Notes sequence and runs from the same underlying workflow.</p>
+  </div>
+</div>
+
+<div class="header-strip">
+  <div class="col"><h2>Who This Guide Is For</h2></div>
+</div>
+<div class="content-band">
+  <div class="col">
+    <p>Anyone on the MAG sales or marketing team who works with the Cold Leads outreach sequence in ActiveCampaign, or who reviews deals and relies on the notes being accurate. You do not need to run or configure anything — this section explains what the automation does on your behalf and how to check it is working. Setting up or changing the automation itself is an admin task (see How It Was Built).</p>
+  </div>
+</div>
+
+<div class="header-strip">
+  <div class="col"><h2>How to Use It</h2></div>
+</div>
+<div class="content-band">
+  <div class="col">
+    <p>There is nothing to start or click — the automation runs on its own on a schedule. To make use of it and to confirm it is doing its job:</p>
+    <ol>
+      <li><b>Work the sequence as normal.</b> As the Cold Leads outreach emails go out and the send dates are recorded, this automation picks them up automatically on the next morning's run.</li>
+      <li><b>Open a lead's deal in ActiveCampaign</b> (at <a href="https://myadventuregroup.activehosted.com">myadventuregroup.activehosted.com</a>).</li>
+      <li><b>Look at the deal's Notes.</b> For each follow-up email that has been sent, you should see a corresponding note recording that stage of the sequence.</li>
+      <li><b>Expect notes to appear the morning after a send.</b> If an email was sent today, its note will typically show up during the next weekday morning run, not instantly.</li>
+    </ol>
+    <img class="placeholder-img" src="https://placehold.co/900x400/eeeeee/37474f?text=ActiveCampaign%20Deal%20Notes" alt="ActiveCampaign Deal Notes placeholder">
+    <p class="placeholder-caption">Placeholder image — replace with an actual screenshot.</p>
+  </div>
+</div>
+
+<div class="header-strip">
+  <div class="col"><h2>What to Expect</h2></div>
+</div>
+<div class="content-band">
+  <div class="col">
+    <ul>
+      <li><b>Runs weekday mornings, Philippine time.</b> The five stages are processed in sequence between 6:40 AM and 7:00 AM PH time, Monday to Friday: intro at 6:40, 1st follow-up at 6:45, 2nd follow-up at 6:50, 3rd follow-up at 6:55, 4th follow-up at 7:00.</li>
+      <li><b>Notes land on the deal, not the contact.</b> Each note is added to the lead's ActiveCampaign <i>deal</i>. A lead only gets notes if they have a matching deal in ActiveCampaign.</li>
+      <li><b>Each note is added once.</b> Once a stage's note has been written, the record is flagged so the automation never duplicates it on later runs.</li>
+      <li><b>It only catches up on what's outstanding.</b> Every run adds notes only for sends that have a recorded send date but no note yet — so if a run is missed, the next run picks up anything left over.</li>
+      <li><b>No email is sent by this automation.</b> It does not send the outreach emails themselves — it only records notes about emails that were already sent by the sequence.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="header-strip">
+  <div class="col"><h2>Known Limitations</h2></div>
+</div>
+<div class="content-band">
+  <div class="col">
+    <ul>
+      <li><b>A lead must exist in ActiveCampaign as both a contact and a deal.</b> The automation matches the sequence record to a contact by email, then to that contact's deal. If there is no matching contact, or the contact has no deal, no note is added for that person.</li>
+      <li><b>It depends on send dates being recorded.</b> A stage's note is only added once that stage's email has a recorded send date. If a send date is missing, the note won't be added even though the email may have gone out.</li>
+      <li><b>Weekends are skipped.</b> The automation does not run Saturday or Sunday (PH time). Notes for weekend sends are added on the following Monday morning.</li>
+      <li><b>It runs on a morning schedule, not in real time.</b> Notes are not written the instant an email is sent — expect a lag until the next weekday morning run.</li>
+      <li><b>It does not remove or edit notes.</b> It only adds new ones. Cleaning up incorrect notes is a manual task.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="header-strip">
+  <div class="col"><h2>How It Was Built (Architecture &amp; Tech Stack)</h2></div>
+</div>
+<div class="content-band">
+  <div class="col">
+    <p>The automation is part of a single n8n workflow named <b>AC Notes Automation (Follow up sequence)</b>, which holds both the Soc Med and the Cold Leads branches. The Cold Leads side has five near-identical branches, one per email stage. Each branch works like this:</p>
+    <ul>
+      <li><b>Trigger</b> — a Webhook that is called each morning by an external scheduler (see below). This replaces n8n's built-in timer, which does not run reliably on this cloud setup.</li>
+      <li><b>Read outstanding threads</b> — a SQL query against the <code>cold_leads_follow_up_sequence_threads</code> table joins to <code>activecampaign_contacts</code> (by email) and <code>activecampaign_deals</code> (by contact) and selects only rows where that stage's email was sent but its note has not yet been added.</li>
+      <li><b>Add the note</b> — for each matching record, an HTTP request posts a note to the ActiveCampaign deal via the ActiveCampaign API (<code>/api/3/deals/{deal}/notes</code>). Items are processed in small batches.</li>
+      <li><b>Mark as done</b> — the record in <code>cold_leads_follow_up_sequence_threads</code> is updated to flag that stage's note as added, so it is never re-added.</li>
+    </ul>
+    <img class="placeholder-img" src="https://placehold.co/900x400/eeeeee/37474f?text=n8n%20Workflow%20Diagram" alt="n8n Workflow Diagram placeholder">
+    <p class="placeholder-caption">Placeholder image — replace with an actual screenshot.</p>
+    <p>The whole workflow is triggered by <b>Supabase pg_cron</b>, a free scheduler running in the database, which calls each branch's webhook on a staggered weekday-morning schedule. Tech stack:</p>
+    <ul>
+      <li><b>n8n</b> — the workflow automation engine, running on Google Cloud Run.</li>
+      <li><b>ActiveCampaign</b> — the CRM where the deal notes are written (via its REST API).</li>
+      <li><b>Supabase (PostgreSQL)</b> — stores the sequence-tracking tables and the n8n workflow state, and hosts the pg_cron scheduler that fires the daily runs.</li>
+      <li><b>Google Cloud Run</b> — hosts the n8n service; it wakes on the scheduled webhook call, runs the workflow, and scales back down when idle.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="header-strip">
+  <div class="col"><h2>Troubleshooting</h2></div>
+</div>
+<div class="content-band">
+  <div class="col">
+    <ul>
+      <li><b>A lead's deal is missing an expected note:</b> confirm the lead exists in ActiveCampaign as a contact (matched by email) and has a deal — no deal means no note. Then confirm the relevant email has a recorded send date.</li>
+      <li><b>Notes haven't appeared for a recent send:</b> they are added the next weekday morning, not instantly. Check again after the next run (6:40–7:00 AM PH), and note that weekend sends are picked up on Monday.</li>
+      <li><b>A whole morning's notes are missing:</b> the automation may not have run. Ask your admin to confirm the scheduled webhook calls fired and returned successfully.</li>
+      <li><b>Notes stopped appearing entirely:</b> the ActiveCampaign connection may need attention, or the workflow may have been switched off. Ask your admin to confirm the workflow is Active and its ActiveCampaign credential is valid.</li>
+      <li><b>A note looks wrong or duplicated:</b> the automation adds each stage's note only once and does not edit notes, so unexpected content usually points to the underlying sequence data — raise it with your admin.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="header-strip">
+  <div class="col"><h2>Support / Questions</h2></div>
+</div>
+<div class="content-band">
+  <div class="col">
+    <p>For anything that isn't working, questions about the notes, or changes to the schedule, contact <b>Julienne</b> at <a href="mailto:julienne@myadventuregroup.com.au">julienne@myadventuregroup.com.au</a>.</p>
+  </div>
+</div>
+
+<section id="h.68f0b8918457bce8_82" style="background:#ffffff;padding:8px 20px;"><div style="max-width:760px;margin:0 auto;"><hr style="border:none;border-top:1px solid #d9d9d9;margin:0;"></div></section>
+<section id="h.5a0263770fa94d5d_3" style="background:#ffffff;padding:24px 20px;"><div style="max-width:760px;margin:0 auto;"><a href="#" style="display:inline-block;font-family:'Lato',sans-serif;font-size:15px;font-weight:400;color:#ffffff;background:#37474F;padding:12px 28px;border-radius:4px;text-decoration:none;letter-spacing:0.3px;">Button label</a></div></section>
+
+<div class="closing-band">
+  <div class="col">
+    <p>Updated by: Julienne</p>
+    <p>Last Update: 18 September 2026</p>
+  </div>
+</div>
+
+</body>
+</html>

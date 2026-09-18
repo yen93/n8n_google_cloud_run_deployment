@@ -162,6 +162,51 @@ select cron.schedule('n8n-ac-notes-3rd-followup', '55 22 * * 0-4', $$
 $$);
 
 -- ---------------------------------------------------------------------------
+-- AC Notes Automation: Cold Leads follow up sequence  (added 2026-09-18)
+--   Five Cold Leads "AC notes tagging" webhooks (intro + 4 follow-ups),
+--   staggered 6:40-7:00 AM Manila. Same n8n workflow as the Soc Med AC Notes
+--   branches above (8vZG1SAYwSmcHJ2x). These share the 22:40/22:50/22:55/23:00
+--   UTC minutes with existing jobs; pg_cron fires each named job independently
+--   and the block is inside the 05:50-07:05 Manila keep-warm window. dow 0-4
+--   (Sun-Thu UTC = Mon-Fri PHT), same rule as the blocks above.
+-- ---------------------------------------------------------------------------
+
+-- Cold Leads: email intro AC notes tagging     | 6:40 AM  | 22:40 UTC
+select cron.schedule('n8n-cold-leads-notes-intro', '40 22 * * 0-4', $$
+  select net.http_get(
+    url := 'https://n8n-659687081407.australia-southeast1.run.app/webhook/2dcf9990-d794-43c7-9fb4-b81f1caad619',
+    timeout_milliseconds := 30000);
+$$);
+
+-- Cold Leads: 1st follow up AC notes tagging   | 6:45 AM  | 22:45 UTC
+select cron.schedule('n8n-cold-leads-notes-1st-followup', '45 22 * * 0-4', $$
+  select net.http_get(
+    url := 'https://n8n-659687081407.australia-southeast1.run.app/webhook/d1ab03b4-fb68-460f-8a4a-24f057c59480',
+    timeout_milliseconds := 30000);
+$$);
+
+-- Cold Leads: 2nd follow up AC notes tagging   | 6:50 AM  | 22:50 UTC
+select cron.schedule('n8n-cold-leads-notes-2nd-followup', '50 22 * * 0-4', $$
+  select net.http_get(
+    url := 'https://n8n-659687081407.australia-southeast1.run.app/webhook/358613aa-1325-40e8-b2b2-af3ec223d579',
+    timeout_milliseconds := 30000);
+$$);
+
+-- Cold Leads: 3rd follow up AC notes tagging   | 6:55 AM  | 22:55 UTC
+select cron.schedule('n8n-cold-leads-notes-3rd-followup', '55 22 * * 0-4', $$
+  select net.http_get(
+    url := 'https://n8n-659687081407.australia-southeast1.run.app/webhook/be7e4d56-a267-4f41-8616-c5e1be9fdab9',
+    timeout_milliseconds := 30000);
+$$);
+
+-- Cold Leads: 4th follow up AC notes tagging   | 7:00 AM  | 23:00 UTC
+select cron.schedule('n8n-cold-leads-notes-4th-followup', '0 23 * * 0-4', $$
+  select net.http_get(
+    url := 'https://n8n-659687081407.australia-southeast1.run.app/webhook/2b234727-e9ac-4f3c-ab32-f010c257bed4',
+    timeout_milliseconds := 30000);
+$$);
+
+-- ---------------------------------------------------------------------------
 -- NOT SCHEDULED (kept here for reference, intentionally NOT live)
 -- ---------------------------------------------------------------------------
 -- n8n-batch-mailer (webhook 18166a62-3c79-4f66-8597-59ff30469cbe) is NOT in the

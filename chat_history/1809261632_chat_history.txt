@@ -1,0 +1,83 @@
+================================================================================
+CHAT HISTORY EXPORT — 2026-09-18
+Session: Continuation of the AC Notes automation work. Generated the iMAG user-
+guide page for the Soc Med AC Notes sequence; then gave the Cold Leads AC Notes
+sequence the full treatment (scheduled its 5 webhooks in Supabase pg_cron +
+generated its iMAG user-guide page). (The earlier part of the day — scheduling the
+Soc Med webhooks and the first /dcp — was exported to 1809261431_chat_history.txt.)
+================================================================================
+
+--------------------------------------------------------------------------------
+USER:
+run /create-user-guide-doc and create imag page for the AC Notes Automation
+(Follow up sequence)  [+ mid-turn: "you can check the n8n URL for more context"]
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Ran the create-user-guide-doc skill. The webhooks .txt only lists URLs, and the
+n8n editor needs a login, so grounded the guide by inspecting the live workflow in
+Supabase instead. Found ONE workflow (id 8vZG1SAYwSmcHJ2x, "AC Notes Automation
+(Follow up sequence)") holding all four Soc Med webhooks, with four parallel
+branches. Confirmed the mechanism from the node SQL/HTTP: each branch reads
+follow_up_sequence_threads, joins to activecampaign_contacts (by email) and
+activecampaign_deals (by contact), and for rows where a stage's email was sent
+(email_Nth_date_sent) but no note added yet (Nth_email_ac_note_added is null),
+POSTs a note to the AC deal (/api/3/deals/{deal}/notes), then flags the row done.
+
+Drafted an end-user guide (What/Who/How to use/What to expect/Limitations/How it
+was built/Troubleshooting/Support — support contact Julienne, reused from the
+existing guide). Fired the iMAG Page Builder routine (trig_01Ri1mhfdBuHUYT5tCSSmYaG)
+with the HTML inline, Notify julienne@, Save to folder 1fN4U-...QqDK. The remote
+run hit API rate-limiting and took ~7 min instead of 1-3, but completed: saved
+"AC Notes Automation (Follow-up Sequence) — User Guide.html" (Drive id
+1qszayV0XWujItBD2mz1g2o08TqjoGjf1). Downloaded it and saved the local copy
+ac-notes-automation-user-guide.html (13 KB) to the project root. Flagged the file
+was still uncommitted and offered to commit.
+
+--------------------------------------------------------------------------------
+USER:
+kindly do the same for "webhooks - AC Notes Automation (cold leads Follow up
+sequence).txt"
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Read the file: 5 Cold Leads "AC notes tagging" webhooks (intro + 4 follow-ups) at
+6:40/6:45/6:50/6:55/7:00 AM PH. Checked Supabase: none were scheduled yet, and the
+webhooks live in the SAME workflow (8vZG1SAYwSmcHJ2x) as the Soc Med branches.
+"Do the same" was ambiguous (schedule vs. guide vs. both) and one option writes to
+the production DB, so asked via AskUserQuestion — user chose "Schedule + guide".
+
+Scheduling: added 5 pg_cron jobs (jobid 27-31), dow 0-4 (Mon-Fri PHT):
+  n8n-cold-leads-notes-intro         40 22  (6:40 AM)
+  n8n-cold-leads-notes-1st-followup  45 22  (6:45 AM)
+  n8n-cold-leads-notes-2nd-followup  50 22  (6:50 AM)
+  n8n-cold-leads-notes-3rd-followup  55 22  (6:55 AM)
+  n8n-cold-leads-notes-4th-followup  0 23   (7:00 AM)
+Verified all active. Added the 5 blocks to schedule_webhooks.sql. These share the
+22:40/22:50/22:55/23:00 UTC minutes with existing jobs (harmless — separate named
+jobs, all inside the 05:50-07:05 keep-warm window).
+
+Guide: confirmed the Cold Leads branches use a SEPARATE table
+cold_leads_follow_up_sequence_threads with 5 stages (first..fifth email), same
+join-to-deal / POST-note / mark-done mechanism. Drafted the 5-stage guide and
+fired the iMAG routine again. It again hit heavy rate-limiting (appeared stalled
+~10 min in the run log, but was log-propagation lag) and completed: saved
+"AC Notes Automation — Cold Leads Follow-up Sequence — User Guide.html" (Drive id
+13JV8kTJBaW-E1kRwnfaQkIhEXgXQUPrS). Downloaded and saved local copy
+ac-notes-cold-leads-user-guide.html (13.5 KB) to the project root. Reported both
+deliverables and the still-uncommitted files; offered to run /dcp.
+
+--------------------------------------------------------------------------------
+USER:
+yes, run /dcp and push everything
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Saved this transcript, updated as_built.txt (added the 5 Cold Leads AC Notes cron
+jobs -> 20 live cron jobs total; recorded both new user-guide HTML files and their
+Drive links), left CLAUDE.md unchanged (no new conventions/gotchas), and committed
++ pushed everything to origin/master.
+
+================================================================================
+END OF EXPORT
+================================================================================

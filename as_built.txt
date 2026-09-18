@@ -65,8 +65,8 @@ AUTOMATIONS / ROUTINES
   external HTTP calls to per-workflow Webhook Trigger URLs, driven by Supabase
   pg_cron + pg_net (fully free, in-stack). Each daily job fires an HTTP GET that
   both wakes the container and triggers the workflow.
-- LIVE cron jobs (cron.job in Supabase, verified 2026-09-18): 15 active,
-  staggered every 5 min from 06:00-06:55 AM Manila plus one at 07:00, MON-FRI PHT
+- LIVE cron jobs (cron.job in Supabase, verified 2026-09-18): 20 active,
+  staggered every 5 min from 06:00-06:55 AM Manila plus several at 07:00, MON-FRI PHT
   ONLY (stored as UTC 22:00-23:00 the prior day; pg_cron runs in UTC, no DST). Rescheduled 2026-09-16
   from the earlier ~7:00-9:30 AM spread to this tighter 6 AM block (the old 9:30 AM
   double-slot is gone), then restricted to weekdays 2026-09-16 (service fully idle
@@ -84,11 +84,24 @@ AUTOMATIONS / ROUTINES
     06:35 n8n-cold-leads-scraper            (jobid 6,  35 22)
     06:40 n8n-insta-story-scraper           (jobid 10, 40 22)
     06:40 n8n-ac-notes-intro                (jobid 23, 40 22)  [shares 22:40]
+    06:40 n8n-cold-leads-notes-intro        (jobid 27, 40 22)  [shares 22:40]
     06:45 n8n-ac-notes-1st-followup         (jobid 24, 45 22)
+    06:45 n8n-cold-leads-notes-1st-followup (jobid 28, 45 22)  [shares 22:45]
     06:50 n8n-sales-daily-email-notification (jobid 12, 50 22)
     06:50 n8n-ac-notes-2nd-followup         (jobid 25, 50 22)  [shares 22:50]
+    06:50 n8n-cold-leads-notes-2nd-followup (jobid 29, 50 22)  [shares 22:50]
     06:55 n8n-ac-notes-3rd-followup         (jobid 26, 55 22)
+    06:55 n8n-cold-leads-notes-3rd-followup (jobid 30, 55 22)  [shares 22:55]
     07:00 Insta Story Scraper: Log to sheet and notify Liv (jobid 14, 0 23)
+    07:00 n8n-cold-leads-notes-4th-followup (jobid 31, 0 23)   [shares 23:00]
+  - AC Notes Automation (workflow 8vZG1SAYwSmcHJ2x, active): one n8n workflow holds
+    BOTH the Soc Med AC-notes branches (4 stages, table follow_up_sequence_threads,
+    jobid 23-26) and the Cold Leads AC-notes branches (5 stages, table
+    cold_leads_follow_up_sequence_threads, jobid 27-31). Each branch reads its
+    threads table, joins to activecampaign_contacts (by email) + activecampaign_deals
+    (by contact), POSTs a note to the AC deal (/api/3/deals/{deal}/notes) for each
+    stage whose email was sent but has no note yet, then flags the row done. Soc Med
+    added 2026-09-18; Cold Leads added 2026-09-18.
   - Reconciled: n8n-linkedin-outbound-sales IS live (jobid 21, 06:15) — the earlier
     "confirm if it should be scheduled" discrepancy is resolved.
   - n8n-batch-mailer is NOT in the live set (was in an earlier snapshot at 09:15;
@@ -159,5 +172,16 @@ OTHER
   Daily Run Schedule and How-the-Daily-Trigger-Works sections (local copy is
   ahead of the Drive copy).
 - "iMAG Page.html" — earlier n8n Migration & Operations guide (also in Drive).
+- "ac-notes-automation-user-guide.html" — end-user guide for the Soc Med AC Notes
+  (Follow up sequence) automation, iMAG Sites theme. Generated 2026-09-18 via the
+  create-user-guide-doc skill (iMAG Page Builder routine); local copy + saved to the
+  shared Drive user-guide folder (id 1qszayV0XWujItBD2mz1g2o08TqjoGjf1).
+- "ac-notes-cold-leads-user-guide.html" — end-user guide for the Cold Leads AC Notes
+  follow-up sequence, iMAG Sites theme. Generated 2026-09-18 the same way; local copy
+  + Drive folder (id 13JV8kTJBaW-E1kRwnfaQkIhEXgXQUPrS).
+- "webhooks - AC Notes Automation (Follow up sequence).txt" and "webhooks - AC Notes
+  Automation (cold leads Follow up sequence).txt" — the webhook URL + PH-time source
+  lists for the two AC Notes sequences (repo root). Public GUID-path webhooks; used
+  to build the pg_cron schedules and the guides above.
 - chat_history/ — per-session narrative logs.
 ================================================================================
