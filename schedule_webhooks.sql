@@ -105,8 +105,13 @@ select cron.schedule('n8n-insta-story-scraper', '40 22 * * 0-4', $$
     timeout_milliseconds := 30000);
 $$);
 
--- Insta Story Scraper: Log to sheet and notify Liv | 6:45 AM | 22:45 UTC
-select cron.schedule('n8n-insta-story-scraper-log-notify-liv', '45 22 * * 0-4', $$
+-- Insta Story Scraper: Log to sheet and notify Liv | 7:00 AM | 23:00 UTC
+-- NOTE: this job (jobid 14) was created via the Supabase dashboard UI, so its
+--   jobname is the human-readable string below, NOT the n8n- slug convention.
+--   Do NOT put a "-- comment" INSIDE the url string -- it becomes part of the URL
+--   and net.http_get rejects it ("Malformed input to a URL function"). That bug
+--   silently killed every run Sep 15-17 2026 before it was fixed.
+select cron.schedule('Insta Story Scraper: Log to sheet and notify Liv', '0 23 * * 0-4', $$
   select net.http_get(
     url := 'https://n8n-659687081407.australia-southeast1.run.app/webhook/57fe4813-a476-4f26-b27b-e011e5c17092',
     timeout_milliseconds := 30000);

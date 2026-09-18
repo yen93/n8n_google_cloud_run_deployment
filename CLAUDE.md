@@ -83,6 +83,12 @@ See `DEPLOYMENT.md` for the full runbook and `as_built.txt` for the current inve
      QUEUED, not once n8n answers. Confirm real HTTP status in `net._http_response`,
      not just `cron.job_run_details`. Cold starts are slow — set
      `timeout_milliseconds := 30000` on the calls.
+   - NEVER put a SQL `-- comment` INSIDE the `url` string literal. It becomes part
+     of the URL and `net.http_get` rejects it (`Malformed input to a URL function`)
+     BEFORE queuing — so `cron.job_run_details` shows `status=failed` while pg_cron
+     itself fired on time. This silently killed job 14 every run Sep 15-17 2026
+     (URL ended `...5c17092 --9:30 AM PH Time`). Put labels in the `--` comment
+     line above the `cron.schedule()` call, never inside the url.
 7. **Keep-warm window: two Cloud Scheduler jobs toggle `min-instances` (added
    2026-09-16).** `n8n-scale-up` (05:50 Mon-Fri Manila) sets min=1,
    `n8n-scale-down` (07:05 Mon-Fri Manila) sets min=0, bracketing the 06:00–06:50

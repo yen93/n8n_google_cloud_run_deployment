@@ -1,0 +1,69 @@
+================================================================================
+CHAT HISTORY EXPORT — 2026-09-18
+Session: Diagnosed why pg_cron job 14 ("Insta Story Scraper: Log to sheet and
+notify Liv") failed to trigger at 7 AM PH Friday. Root cause was a malformed URL
+(an inline comment glued inside the webhook URL string). Fixed the live job,
+test-fired it (HTTP 200), and synced schedule_webhooks.sql.
+================================================================================
+
+--------------------------------------------------------------------------------
+USER:
+Supabase job 14 did not fire at 7am PH time Friday (a few minutes ago).
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Investigated the live pg_cron state on Supabase project uwsncuowtzydylfabikj in
+parallel with grepping schedule_webhooks.sql.
+
+Queried cron.job (all 11 jobs). Found job 14 = "Insta Story Scraper: Log to sheet
+and notify Liv", schedule `0 23 * * 0-4` (23:00 UTC = 07:00 AM Manila, weekdays).
+Its command's URL was:
+  .../webhook/57fe4813-a476-4f26-b27b-e011e5c17092 --9:30 AM PH Time
+i.e. someone tried to add a "-- comment" but placed it INSIDE the URL string
+literal, so " --9:30 AM PH Time" became part of the URL.
+
+Confirmed via cron.job_run_details for jobid 14: pg_cron DID fire on schedule
+(2026-09-17 23:00:00 UTC = Fri 07:00 Manila) but the job FAILED every run with
+"ERROR: invalid URL ... Malformed input to a URL function" — net.http_get
+rejected the URL before the request was ever queued. Failing runs: runid 19
+(Sep 15), 36 (Sep 16), 48 (Sep 17). So the problem was never scheduling — it was
+the URL.
+
+Fix applied: re-ran cron.schedule() with the SAME jobname and SAME schedule
+(`0 23 * * 0-4`) but a clean URL (comment removed). cron.schedule upserted in
+place — returned jobid 14, so no duplicate was created. Verified the stored
+command is now clean.
+
+Test-fired the webhook manually via net.http_get (request id 46) to run today's
+missed execution, then checked net._http_response: status_code 200, no error.
+Cold start took ~9 s. So the fix works and Friday's run is done.
+
+Repo sync: found schedule_webhooks.sql had drifted from reality — line 108-113
+described this job under a different name (n8n-insta-story-scraper-log-notify-liv)
+and time (45 22 = 6:45 AM PH), and that scripted version was never actually
+applied to the DB (not present in cron.job); only the UI-created job 14 exists for
+this webhook. Updated the script block to match the live job exactly (friendly
+jobname "Insta Story Scraper: Log to sheet and notify Liv", schedule `0 23`,
+7:00 AM PH), and added a warning comment: never put a "-- comment" inside the url
+string, and a note that this job was created via the Supabase dashboard UI so it
+uses the human-readable name, not the n8n- slug convention.
+
+Side notes flagged to user (no action taken): (1) the old label said "9:30 AM" but
+the live schedule is 7:00 AM — offered to change to `30 1 * * 0-4` if 9:30 was
+intended; (2) 7:00 AM is inside the keep-warm window (scale-up 5:50, scale-down
+7:05), so no cold-start risk for the scheduled run. Asked whether to commit the
+SQL change.
+
+--------------------------------------------------------------------------------
+USER:
+run /dcp
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Saved this transcript, updated as_built.txt (job 14 line: schedule 06:45 -> 07:00,
+noted the malformed-URL incident and repo/live reconciliation), left CLAUDE.md as
+appropriate, and committed + pushed the changes to origin/master.
+
+================================================================================
+END OF EXPORT
+================================================================================

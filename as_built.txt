@@ -1,6 +1,6 @@
 ================================================================================
 AS-BUILT — n8n on Google Cloud Run
-Last updated: 2026-09-16
+Last updated: 2026-09-18
 ================================================================================
 
 CONTAINER IMAGE
@@ -65,9 +65,9 @@ AUTOMATIONS / ROUTINES
   external HTTP calls to per-workflow Webhook Trigger URLs, driven by Supabase
   pg_cron + pg_net (fully free, in-stack). Each daily job fires an HTTP GET that
   both wakes the container and triggers the workflow.
-- LIVE cron jobs (cron.job in Supabase, verified 2026-09-16): 11 active, all
-  staggered every 5 min from 06:00-06:50 AM Manila, MON-FRI PHT ONLY (stored as UTC
-  22:00-22:50 the prior day; pg_cron runs in UTC, no DST). Rescheduled 2026-09-16
+- LIVE cron jobs (cron.job in Supabase, verified 2026-09-18): 11 active,
+  staggered every 5 min from 06:00-06:50 AM Manila plus one at 07:00, MON-FRI PHT
+  ONLY (stored as UTC 22:00-23:00 the prior day; pg_cron runs in UTC, no DST). Rescheduled 2026-09-16
   from the earlier ~7:00-9:30 AM spread to this tighter 6 AM block (the old 9:30 AM
   double-slot is gone), then restricted to weekdays 2026-09-16 (service fully idle
   on weekends). Day-of-week trap: schedules use dow 0-4 (Sun-Thu UTC), NOT 1-5 --
@@ -83,8 +83,8 @@ AUTOMATIONS / ROUTINES
     06:30 n8n-linkedin-comments-enrichment  (jobid 5,  30 22)
     06:35 n8n-cold-leads-scraper            (jobid 6,  35 22)
     06:40 n8n-insta-story-scraper           (jobid 10, 40 22)
-    06:45 Insta Story Scraper: Log to sheet and notify Liv (jobid 14, 45 22)
     06:50 n8n-sales-daily-email-notification (jobid 12, 50 22)
+    07:00 Insta Story Scraper: Log to sheet and notify Liv (jobid 14, 0 23)
   - Reconciled: n8n-linkedin-outbound-sales IS live (jobid 21, 06:15) — the earlier
     "confirm if it should be scheduled" discrepancy is resolved.
   - n8n-batch-mailer is NOT in the live set (was in an earlier snapshot at 09:15;
@@ -114,11 +114,17 @@ AUTOMATIONS / ROUTINES
   Updated 2026-09-16 to match the live set: the 11 daily jobs carry the new 6 AM
   UTC schedules, and the stale intraday section (Email Handling Agent / Action
   Items) plus the unscheduled n8n-batch-mailer block were pruned to a NOT-SCHEDULED
-  reference note so re-running no longer recreates dead jobs. Its 12th daily job is
-  still named n8n-insta-story-scraper-log-notify-liv while the live job uses the
-  friendly name "Insta Story Scraper: Log to sheet and notify Liv" — re-running
-  cron.schedule() with the script name would create a SECOND job, not update the
-  live one; unschedule one of the two if that happens.
+  reference note so re-running no longer recreates dead jobs. On 2026-09-18 the
+  jobid-14 block was reconciled to the live job: renamed to the friendly name
+  "Insta Story Scraper: Log to sheet and notify Liv" and rescheduled to `0 23`
+  (7:00 AM PH) so re-running cron.schedule() now upserts the live job in place
+  instead of creating a duplicate.
+- INCIDENT 2026-09-18: job 14 silently failed every run Sep 15-17 because its
+  webhook URL had an inline "-- comment" ("... 5c17092 --9:30 AM PH Time") pasted
+  INSIDE the URL string, so net.http_get rejected it ("Malformed input to a URL
+  function") before queuing. pg_cron fired on time; the command was the problem.
+  Fixed by re-running cron.schedule() with a clean URL; verified with a manual
+  net.http_get -> HTTP 200. Rule: never put a SQL "-- comment" inside a url string.
 - COST (Cloud Run, always-allocated 1 vCPU + 1 GiB): now that only once-daily jobs
   remain, container uptime is minimal (~daily 7-9:30 batch), so ~$0-3/month
   (mostly within the free tier). Was heading to ~$12-18/month with the intraday
