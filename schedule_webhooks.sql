@@ -125,6 +125,43 @@ select cron.schedule('n8n-sales-daily-email-notification', '50 22 * * 0-4', $$
 $$);
 
 -- ---------------------------------------------------------------------------
+-- AC Notes Automation (Follow up sequence)  (added 2026-09-18)
+--   Four Soc Med "AC notes tagging" webhooks, staggered 6:40-6:55 AM Manila.
+--   These share the 22:40 and 22:50 UTC minutes with existing jobs (insta-story
+--   -scraper / sales-daily-email); pg_cron fires each named job independently and
+--   the whole block is inside the 05:50-07:05 Manila keep-warm window, so no cold
+--   start. dow 0-4 (Sun-Thu UTC = Mon-Fri PHT), same rule as the block above.
+-- ---------------------------------------------------------------------------
+
+-- AC Notes: Soc Med email intro tagging       | 6:40 AM  | 22:40 UTC
+select cron.schedule('n8n-ac-notes-intro', '40 22 * * 0-4', $$
+  select net.http_get(
+    url := 'https://n8n-659687081407.australia-southeast1.run.app/webhook/3c2a741d-656f-41fe-846e-a84d4b0ae530',
+    timeout_milliseconds := 30000);
+$$);
+
+-- AC Notes: Soc Med 1st follow up tagging     | 6:45 AM  | 22:45 UTC
+select cron.schedule('n8n-ac-notes-1st-followup', '45 22 * * 0-4', $$
+  select net.http_get(
+    url := 'https://n8n-659687081407.australia-southeast1.run.app/webhook/968fa7b5-c233-4488-b09a-8b57975dd512',
+    timeout_milliseconds := 30000);
+$$);
+
+-- AC Notes: Soc Med 2nd follow up tagging     | 6:50 AM  | 22:50 UTC
+select cron.schedule('n8n-ac-notes-2nd-followup', '50 22 * * 0-4', $$
+  select net.http_get(
+    url := 'https://n8n-659687081407.australia-southeast1.run.app/webhook/f8e3664b-0c56-479e-8702-e4bfa6a8aeba',
+    timeout_milliseconds := 30000);
+$$);
+
+-- AC Notes: Soc Med 3rd follow up tagging     | 6:55 AM  | 22:55 UTC
+select cron.schedule('n8n-ac-notes-3rd-followup', '55 22 * * 0-4', $$
+  select net.http_get(
+    url := 'https://n8n-659687081407.australia-southeast1.run.app/webhook/2a30ffcf-4f94-44f4-9a83-59ec3b18abf4',
+    timeout_milliseconds := 30000);
+$$);
+
+-- ---------------------------------------------------------------------------
 -- NOT SCHEDULED (kept here for reference, intentionally NOT live)
 -- ---------------------------------------------------------------------------
 -- n8n-batch-mailer (webhook 18166a62-3c79-4f66-8597-59ff30469cbe) is NOT in the

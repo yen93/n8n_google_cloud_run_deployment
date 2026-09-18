@@ -65,8 +65,8 @@ AUTOMATIONS / ROUTINES
   external HTTP calls to per-workflow Webhook Trigger URLs, driven by Supabase
   pg_cron + pg_net (fully free, in-stack). Each daily job fires an HTTP GET that
   both wakes the container and triggers the workflow.
-- LIVE cron jobs (cron.job in Supabase, verified 2026-09-18): 11 active,
-  staggered every 5 min from 06:00-06:50 AM Manila plus one at 07:00, MON-FRI PHT
+- LIVE cron jobs (cron.job in Supabase, verified 2026-09-18): 15 active,
+  staggered every 5 min from 06:00-06:55 AM Manila plus one at 07:00, MON-FRI PHT
   ONLY (stored as UTC 22:00-23:00 the prior day; pg_cron runs in UTC, no DST). Rescheduled 2026-09-16
   from the earlier ~7:00-9:30 AM spread to this tighter 6 AM block (the old 9:30 AM
   double-slot is gone), then restricted to weekdays 2026-09-16 (service fully idle
@@ -83,7 +83,11 @@ AUTOMATIONS / ROUTINES
     06:30 n8n-linkedin-comments-enrichment  (jobid 5,  30 22)
     06:35 n8n-cold-leads-scraper            (jobid 6,  35 22)
     06:40 n8n-insta-story-scraper           (jobid 10, 40 22)
+    06:40 n8n-ac-notes-intro                (jobid 23, 40 22)  [shares 22:40]
+    06:45 n8n-ac-notes-1st-followup         (jobid 24, 45 22)
     06:50 n8n-sales-daily-email-notification (jobid 12, 50 22)
+    06:50 n8n-ac-notes-2nd-followup         (jobid 25, 50 22)  [shares 22:50]
+    06:55 n8n-ac-notes-3rd-followup         (jobid 26, 55 22)
     07:00 Insta Story Scraper: Log to sheet and notify Liv (jobid 14, 0 23)
   - Reconciled: n8n-linkedin-outbound-sales IS live (jobid 21, 06:15) — the earlier
     "confirm if it should be scheduled" discrepancy is resolved.
@@ -118,7 +122,12 @@ AUTOMATIONS / ROUTINES
   jobid-14 block was reconciled to the live job: renamed to the friendly name
   "Insta Story Scraper: Log to sheet and notify Liv" and rescheduled to `0 23`
   (7:00 AM PH) so re-running cron.schedule() now upserts the live job in place
-  instead of creating a duplicate.
+  instead of creating a duplicate. On 2026-09-18 four "AC Notes Automation
+  (Follow up sequence)" jobs were added (jobid 23-26, 6:40/6:45/6:50/6:55 AM PH,
+  dow 0-4) from `webhooks - AC Notes Automation (Follow up sequence).txt`;
+  n8n-ac-notes-intro shares the 22:40 minute with n8n-insta-story-scraper and
+  n8n-ac-notes-2nd-followup shares 22:50 with n8n-sales-daily-email-notification
+  (harmless — distinct named jobs, all inside the keep-warm window).
 - INCIDENT 2026-09-18: job 14 silently failed every run Sep 15-17 because its
   webhook URL had an inline "-- comment" ("... 5c17092 --9:30 AM PH Time") pasted
   INSIDE the URL string, so net.http_get rejected it ("Malformed input to a URL
