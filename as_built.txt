@@ -75,6 +75,7 @@ AUTOMATIONS / ROUTINES
   + 1, so Mon-Fri PHT = Sun-Thu UTC. All fire an HTTP GET to a webhook, which both wakes the
   container and triggers the workflow. Live set, in run order:
     06:00 n8n-get-all-ac-deals              (jobid 7,  0 22)
+    06:00 n8n-insta-story-scraper           (jobid 10, 0 22)   [shares 22:00]
     06:05 n8n-get-all-ac-contacts           (jobid 8,  5 22)
     06:10 n8n-get-all-ac-accounts           (jobid 9,  10 22)
     06:15 n8n-linkedin-outbound-sales       (jobid 21, 15 22)
@@ -82,7 +83,6 @@ AUTOMATIONS / ROUTINES
     06:25 n8n-cold-leads-follow-up          (jobid 4,  25 22)
     06:30 n8n-linkedin-comments-enrichment  (jobid 5,  30 22)
     06:35 n8n-cold-leads-scraper            (jobid 6,  35 22)
-    06:40 n8n-insta-story-scraper           (jobid 10, 40 22)
     06:40 n8n-ac-notes-intro                (jobid 23, 40 22)  [shares 22:40]
     06:40 n8n-cold-leads-notes-intro        (jobid 27, 40 22)  [shares 22:40]
     06:45 n8n-ac-notes-1st-followup         (jobid 24, 45 22)
@@ -183,5 +183,15 @@ OTHER
   Automation (cold leads Follow up sequence).txt" — the webhook URL + PH-time source
   lists for the two AC Notes sequences (repo root). Public GUID-path webhooks; used
   to build the pg_cron schedules and the guides above.
+- "daily-scheduled-automations.html" — a single iMAG-themed reference page listing
+  ALL daily scheduled automations across the stack, in PH time: the 20 n8n pg_cron
+  jobs, the 2 MAGTestProject Supabase Edge Functions (sync-insta-stories 6:20,
+  analyze-insta-stories 6:30), and the daily Claude cloud routines (1 active, 5
+  paused). Built 2026-09-18 locally via the imag_page_local skill (no page builder
+  routine / no Drive copy). No secrets in the page (the source cron commands held
+  bearer tokens/JWTs — excluded).
+- GLOBAL SKILL (outside this repo, at ~/.claude/skills/imag_page_local/) — builds an
+  iMAG-themed HTML page locally from a template without firing the cloud iMAG Page
+  Builder routine. Created 2026-09-18; used to build daily-scheduled-automations.html.
 - chat_history/ — per-session narrative logs.
 ================================================================================

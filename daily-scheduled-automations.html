@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daily Scheduled Automations — MAG Run Schedule</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'Lato', Arial, sans-serif; background: #ffffff; }
+  .col { max-width: 760px; margin: 0 auto; padding: 32px 20px; }
+  .header-band {
+    background: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url(https://ssl.gstatic.com/atari/images/simple-header-blended-small.png) center/cover, #37474F;
+    min-height: 320px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 20px;
+  }
+  .header-band h1 {
+    color: #ffffff;
+    font-family: 'Lato', sans-serif;
+    font-weight: 300;
+    font-size: 44px;
+    letter-spacing: 0.5px;
+    margin: 0 0 12px 0;
+    line-height: 1.2;
+  }
+  .header-band .subtitle {
+    color: #ffffff;
+    font-family: 'Lato', sans-serif;
+    font-weight: 300;
+    font-size: 18px;
+    margin: 0;
+    opacity: 0.9;
+  }
+  .intro-band { background: #323232; }
+  .intro-band p {
+    color: #ffffff;
+    font-family: 'Lato', sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    margin: 0;
+  }
+  .header-strip { background: #F2F2F2; }
+  .header-strip .col { padding: 32px 20px; }
+  .header-strip h2 {
+    color: #37474F;
+    font-family: 'Lato', sans-serif;
+    font-weight: 400;
+    font-size: 26px;
+    margin: 0;
+  }
+  .content-band { background: #ffffff; }
+  .content-band h3 {
+    color: #37474F;
+    font-family: 'Lato', sans-serif;
+    font-weight: 700;
+    font-size: 19px;
+    margin: 24px 0 8px 0;
+  }
+  .content-band h3:first-child { margin-top: 0; }
+  .content-band p {
+    color: #212121;
+    font-family: 'Lato', sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    margin: 0 0 16px 0;
+  }
+  .content-band ul, .content-band ol {
+    color: #212121;
+    font-family: 'Lato', sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    padding-left: 24px;
+    margin: 0 0 16px 0;
+  }
+  .content-band li { margin-bottom: 10px; }
+  .content-band a { color: #37474F; text-decoration: underline; }
+  .content-band code {
+    background: #F2F2F2;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 14px;
+  }
+  .time { color: #37474F; font-weight: 700; }
+  .status-paused { color: #9a6a00; font-weight: 700; font-size: 13px; }
+  .status-active { color: #2e7d32; font-weight: 700; font-size: 13px; }
+  .closing-band p {
+    color: #212121;
+    font-family: 'Lato', sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    margin: 0 0 4px 0;
+  }
+</style>
+</head>
+<body>
+
+<div class="header-band">
+  <div>
+    <h1>Daily Scheduled Automations</h1>
+    <p class="subtitle">MAG Automation Run Schedule</p>
+  </div>
+</div>
+
+<div class="intro-band">
+  <div class="col">
+    <p>This is the single reference for every automation that runs on a daily schedule across the MAG stack — the n8n workflows on Google Cloud Run, the Supabase Edge Functions, and the daily Claude cloud routines. It lists what runs, when it runs, and where it lives, so anyone can see the whole morning at a glance. It does not cover automations that run hourly, weekly, or monthly, or that are triggered manually.</p>
+  </div>
+</div>
+
+<div class="header-strip">
+  <div class="col"><h2>How to Read This</h2></div>
+</div>
+<div class="content-band">
+  <div class="col">
+    <ul>
+      <li><b>All times are Philippine Time (PHT, UTC+8).</b> The underlying schedules are stored in UTC and converted here for readability.</li>
+      <li><b>"Mon–Fri" means weekdays only</b> — those automations do not run on weekends. A few Claude routines run every day; each entry says which.</li>
+      <li><b>The n8n container is kept warm 5:50–7:05 AM Mon–Fri</b> so the 6:00–7:00 AM batch does not hit a cold start.</li>
+      <li><b>"Active" vs "Paused":</b> Active automations are running now. Paused ones are configured but currently switched off — listed so nothing is lost track of.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="header-strip">
+  <div class="col"><h2>n8n Workflows (Google Cloud Run)</h2></div>
+</div>
+<div class="content-band">
+  <div class="col">
+    <p>These run in n8n on Google Cloud Run. Each is triggered by a Supabase <code>pg_cron</code> job that calls the workflow's webhook — the call both wakes the container and starts the workflow. All run <b>Mon–Fri</b> and are <b>Active</b>.</p>
+    <ul>
+      <li><span class="time">6:00 AM</span> — Get all ActiveCampaign Deals</li>
+      <li><span class="time">6:00 AM</span> — Insta Story Scraper</li>
+      <li><span class="time">6:05 AM</span> — Get all ActiveCampaign Contacts</li>
+      <li><span class="time">6:10 AM</span> — Get all ActiveCampaign Accounts</li>
+      <li><span class="time">6:15 AM</span> — LinkedIn Outbound Sales Automations</li>
+      <li><span class="time">6:20 AM</span> — Soc Med Follow Up Sequence</li>
+      <li><span class="time">6:25 AM</span> — Cold Leads Follow Up Sequence</li>
+      <li><span class="time">6:30 AM</span> — LinkedIn Comments Scraping POC Enrichment</li>
+      <li><span class="time">6:35 AM</span> — Cold Leads Scraper</li>
+      <li><span class="time">6:40 AM</span> — AC Notes tagging (Soc Med) — email intro</li>
+      <li><span class="time">6:40 AM</span> — AC Notes tagging (Cold Leads) — email intro</li>
+      <li><span class="time">6:45 AM</span> — AC Notes tagging (Soc Med) — 1st follow-up</li>
+      <li><span class="time">6:45 AM</span> — AC Notes tagging (Cold Leads) — 1st follow-up</li>
+      <li><span class="time">6:50 AM</span> — Sales Daily Email Notification</li>
+      <li><span class="time">6:50 AM</span> — AC Notes tagging (Soc Med) — 2nd follow-up</li>
+      <li><span class="time">6:50 AM</span> — AC Notes tagging (Cold Leads) — 2nd follow-up</li>
+      <li><span class="time">6:55 AM</span> — AC Notes tagging (Soc Med) — 3rd follow-up</li>
+      <li><span class="time">6:55 AM</span> — AC Notes tagging (Cold Leads) — 3rd follow-up</li>
+      <li><span class="time">7:00 AM</span> — Insta Story Scraper: Log to Sheet &amp; notify Liv</li>
+      <li><span class="time">7:00 AM</span> — AC Notes tagging (Cold Leads) — 4th follow-up</li>
+    </ul>
+    <p>The AC Notes tagging jobs (both Soc Med and Cold Leads) all belong to one n8n workflow that writes a note onto each prospect's ActiveCampaign deal for every follow-up email that has been sent.</p>
+  </div>
+</div>
+
+<div class="header-strip">
+  <div class="col"><h2>Supabase Edge Functions</h2></div>
+</div>
+<div class="content-band">
+  <div class="col">
+    <p>Edge Functions are small serverless functions that run inside Supabase. Scheduled ones are triggered by a <code>pg_cron</code> job in their project. All run <b>Mon–Fri</b> and are <b>Active</b>.</p>
+    <h3>MAGTestProject</h3>
+    <ul>
+      <li><span class="time">6:20 AM</span> — <code>sync-insta-stories</code> — syncs the latest Instagram stories data into Supabase.</li>
+      <li><span class="time">6:30 AM</span> — <code>analyze-insta-stories</code> — analyzes the synced Instagram stories.</li>
+    </ul>
+    <h3>n8n-production</h3>
+    <p>No scheduled Edge Functions. This project's daily schedules are the n8n pg_cron jobs listed above.</p>
+  </div>
+</div>
+
+<div class="header-strip">
+  <div class="col"><h2>Claude Cloud Routines (Daily)</h2></div>
+</div>
+<div class="content-band">
+  <div class="col">
+    <p>Claude cloud routines are scheduled Claude agents that run in the cloud on a cron schedule. Only the routines that run <b>once per day</b> are listed here (hourly, weekly, and monthly routines are excluded).</p>
+    <h3>Active</h3>
+    <ul>
+      <li><span class="time">6:45 AM</span> (Mon–Fri) — <code>insta_leads_enrichment</code> <span class="status-active">ACTIVE</span></li>
+    </ul>
+    <h3>Paused (configured but currently switched off)</h3>
+    <ul>
+      <li><span class="time">4:00 AM</span> (daily) — Fill missing lead emails (<code>ai_scraped_soc_med_leads</code>) <span class="status-paused">PAUSED</span></li>
+      <li><span class="time">5:10 AM</span> (daily) — MAG Artifact Daily Refresh <span class="status-paused">PAUSED</span></li>
+      <li><span class="time">6:30 AM</span> (Mon–Fri) — <code>scraped_insta_stories_analyzer</code> <span class="status-paused">PAUSED</span></li>
+      <li><span class="time">7:00 AM</span> (daily) — POC Discovery Enrichment (<code>linkedin_posts</code>) <span class="status-paused">PAUSED</span></li>
+      <li><span class="time">12:00 noon</span> (daily) — insta_stories Drive Uploader <span class="status-paused">PAUSED</span></li>
+    </ul>
+  </div>
+</div>
+
+<div class="header-strip">
+  <div class="col"><h2>How It All Runs</h2></div>
+</div>
+<div class="content-band">
+  <div class="col">
+    <p>Three layers make up the daily run:</p>
+    <ul>
+      <li><b>Supabase pg_cron</b> — a free scheduler inside the Supabase database. It fires the n8n workflow webhooks and the MAGTestProject Edge Functions on their staggered morning schedule.</li>
+      <li><b>n8n on Google Cloud Run</b> — hosts the workflows. It wakes on each scheduled webhook call, runs the workflow, and scales back down when idle. A Cloud Scheduler keep-warm window (5:50–7:05 AM Mon–Fri) guarantees it is awake for the batch.</li>
+      <li><b>Claude cloud routines</b> — scheduled Claude agents that run independently in the cloud on their own cron schedules.</li>
+    </ul>
+    <p>Because the schedules are staggered a few minutes apart, the workflows do not all fire at once. Times and run days are managed outside n8n (in pg_cron, the Edge Function cron jobs, and the routine schedules) — contact your automations admin to add, remove, or change any run time.</p>
+  </div>
+</div>
+
+<div class="header-strip">
+  <div class="col"><h2>Support / Questions</h2></div>
+</div>
+<div class="content-band">
+  <div class="col">
+    <p>For changes to any schedule, or anything that isn't running as expected, contact <b>Julienne</b> at <a href="mailto:julienne@myadventuregroup.com.au">julienne@myadventuregroup.com.au</a>.</p>
+  </div>
+</div>
+
+<section id="h.68f0b8918457bce8_82" style="background:#ffffff;padding:8px 20px;"><div style="max-width:760px;margin:0 auto;"><hr style="border:none;border-top:1px solid #d9d9d9;margin:0;"></div></section>
+<section id="h.5a0263770fa94d5d_3" style="background:#ffffff;padding:24px 20px;"><div style="max-width:760px;margin:0 auto;"><a href="#" style="display:inline-block;font-family:'Lato',sans-serif;font-size:15px;font-weight:400;color:#ffffff;background:#37474F;padding:12px 28px;border-radius:4px;text-decoration:none;letter-spacing:0.3px;">Button label</a></div></section>
+
+<div class="closing-band">
+  <div class="col">
+    <p>Updated by: Julienne</p>
+    <p>Last Update: 18 September 2026</p>
+  </div>
+</div>
+
+</body>
+</html>

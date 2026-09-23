@@ -207,6 +207,22 @@ select cron.schedule('n8n-cold-leads-notes-4th-followup', '0 23 * * 0-4', $$
 $$);
 
 -- ---------------------------------------------------------------------------
+-- Google Sheet Update: LinkedIn Comment Enrichment  (added 2026-09-23)
+--   Writes the LinkedIn comment enrichment results to a Google Sheet. Distinct
+--   from n8n-linkedin-comments-enrichment (the 6:30 scraping/enrichment run) --
+--   this is the sheet-update step. Shares the 22:40 UTC minute with existing jobs;
+--   pg_cron fires each named job independently and it's inside the 05:50-07:05
+--   Manila keep-warm window. dow 0-4 (Sun-Thu UTC = Mon-Fri PHT), same rule as above.
+-- ---------------------------------------------------------------------------
+
+-- Google Sheet Update: LinkedIn Comment Enrichment | 6:40 AM | 22:40 UTC
+select cron.schedule('n8n-linkedin-comment-enrichment-sheet-update', '40 22 * * 0-4', $$
+  select net.http_get(
+    url := 'https://n8n-659687081407.australia-southeast1.run.app/webhook/d13096b0-03af-400a-8f4c-1b37cdaf8a9b',
+    timeout_milliseconds := 30000);
+$$);
+
+-- ---------------------------------------------------------------------------
 -- NOT SCHEDULED (kept here for reference, intentionally NOT live)
 -- ---------------------------------------------------------------------------
 -- n8n-batch-mailer (webhook 18166a62-3c79-4f66-8597-59ff30469cbe) is NOT in the

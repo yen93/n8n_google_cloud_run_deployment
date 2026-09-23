@@ -1,0 +1,95 @@
+================================================================================
+CHAT HISTORY EXPORT — 2026-09-18
+Session: Built a local iMAG-themed reference page listing ALL daily scheduled
+automations across the stack (n8n pg_cron, Supabase Edge Functions in both
+projects, daily Claude cloud routines), then packaged the local page-building
+capability as a new global skill (imag_page_local). Continuation of the earlier
+AC Notes work (exported to 1809261632_chat_history.txt).
+================================================================================
+
+NOTE ON REDACTIONS: While gathering the schedule data, some tool outputs contained
+live secrets that were NOT written into any file and are redacted here:
+- The Claude routines listing (RemoteTrigger list) included routine prompts that
+  embedded a Google OAuth client secret and refresh token, plus API-token hints
+  ([REDACTED_GOOGLE_OAUTH], [REDACTED_API_TOKEN_HINT]). Only routine names +
+  cron_expressions were used.
+- The MAGTestProject cron.job commands embedded a Supabase service key
+  ([REDACTED_SUPABASE_SECRET]) and a service-role JWT ([REDACTED_JWT]) in the
+  net.http_post Authorization headers. Only the function name + schedule were used.
+None of these were written to the HTML page, as_built.txt, or this transcript.
+
+--------------------------------------------------------------------------------
+USER:
+Create an iMAG page for all daily scheduled automations set through n8n Cloud Run,
+Supabase Edge Functions (both MAGTestProject and n8n-production), and Claude cloud
+routines (daily only; disregard other routines). Don't fire the page builder —
+create the HTML file directly and save it in this local folder, following the page
+builder's design/structure.
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Gathered live data from all three sources (secrets encountered were excluded — see
+redactions note):
+- n8n-production Supabase (uwsncuowtzydylfabikj) cron.job: 20 active daily jobs,
+  all dow 0-4 (Mon-Fri PHT), 22:00-23:00 UTC = 6:00-7:00 AM PH. Noted jobid 10
+  n8n-insta-story-scraper is '0 22' = 6:00 AM (this corrected a stale 6:40 entry
+  in as_built).
+- Supabase Edge Functions: MAGTestProject (aivitcomiywiysrfwqxt) has 2
+  (sync-insta-stories 6:20 AM, analyze-insta-stories 6:30 AM, both Mon-Fri via
+  pg_cron); n8n-production has none.
+- Claude cloud routines (RemoteTrigger list; parsed name+cron only via Python,
+  never prompts): filtered to daily-frequency = 6 routines. Confirmed routine cron
+  is UTC by checking the one enabled routine's next_run_at (insta_leads_enrichment
+  '45 22' -> next_run_at 2026-09-20T22:45:00Z = 6:45 AM PH). 1 Active
+  (insta_leads_enrichment, 6:45 AM Mon-Fri) + 5 Paused (Fill missing lead emails
+  4:00 AM, MAG Artifact Daily Refresh 5:10 AM, scraped_insta_stories_analyzer
+  6:30 AM, POC Discovery Enrichment 7:00 AM, insta_stories Drive Uploader 12:00
+  noon). Excluded 2 hourly + 1 monthly routine per "daily only".
+
+Built daily-scheduled-automations.html directly in the project root, matching the
+iMAG Page Builder theme exactly (Lato; dark header banner with the gstatic image;
+#323232 intro band; #F2F2F2 header strips + white content bands; the fixed divider
+[id h.68f0b8918457bce8_82] + button [id h.5a0263770fa94d5d_3] sections; Updated by:
+Julienne / 18 September 2026 closing). Sections: How to Read This, n8n Workflows
+(20, time-ordered), Supabase Edge Functions (MAGTestProject 2 + n8n-production
+none), Claude Cloud Routines (Active/Paused), How It All Runs, Support. Omitted
+placeholder images (pure reference page). Flagged the as_built jobid-10 time
+discrepancy and offered to commit.
+
+--------------------------------------------------------------------------------
+USER:
+Create a global skill for this — one that locally creates an HTML iMAG page without
+firing the iMAG Page Builder routine.
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Created a new global skill at C:\Users\Cloverly\.claude\skills\imag_page_local\
+(outside this repo). Two files:
+- template.html — the exact iMAG theme (all CSS + header banner, intro band, the
+  header-strip + content-band section pattern, the fixed divider/button sections
+  with verbatim ids, and the closing band), with {{PAGE_TITLE}}, {{SUBTITLE}},
+  {{INTRO_PARAGRAPH}}, {{SECTIONS}}, {{UPDATED_BY}}, {{LAST_UPDATE}} tokens.
+- SKILL.md — frontmatter (name/description with trigger phrases) + steps, inputs
+  (source content, output path, footer name, date), full theme rules, and explicit
+  disambiguation from imag_page_builder (fires cloud routine + Drive copy) and
+  create-user-guide-doc (drafts project guide + fires routine). Includes the rule
+  to never write secrets into a page even when they appear in inspected source.
+Verified both files exist; the skill registered and now appears in the available-
+skills list. Matched the frontmatter format of existing global skills rather than
+using skill-creator.
+
+--------------------------------------------------------------------------------
+USER:
+/dcp
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Saved this transcript (with the secrets redacted as noted above), corrected the
+stale n8n-insta-story-scraper time in as_built.txt (6:40 -> 6:00, jobid 10) and
+added daily-scheduled-automations.html to the OTHER section, left CLAUDE.md
+unchanged (no new repo conventions/gotchas; the new skill lives outside the repo),
+and committed + pushed to origin/master.
+
+================================================================================
+END OF EXPORT
+================================================================================
