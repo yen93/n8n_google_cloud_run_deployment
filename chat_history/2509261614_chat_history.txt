@@ -1,0 +1,79 @@
+================================================================================
+CHAT HISTORY EXPORT — 2026-09-25
+Session: Diagnosed and recovered the n8n Cloud Run service after it went
+unreachable ("paused by the system cos we hit the cap limit"). Root cause was a
+Cloud Run 429 "Rate exceeded" wedge on the max-instances=1 revision, not a
+billing/Supabase outage. Fixed by deploying a fresh revision, forcing one warm
+instance to clear the stuck routing, then restoring min-instances=0 for free tier.
+================================================================================
+
+--------------------------------------------------------------------------------
+USER:
+Need help re-enabling the n8n Cloud Run service — it was recently paused by the
+system because we hit the cap limit.
+(URL: https://n8n-659687081407.australia-southeast1.run.app)
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Investigated before changing anything. Findings, in order:
+- `gcloud run services describe` showed the service condition Ready=True — so it
+  was NOT disabled at the Cloud Run level. Last modifier was the cloud-run-scaler
+  SA (the keep-warm scheduler).
+- Billing: `gcloud billing projects describe` -> billingEnabled=true. Not a
+  billing shutoff.
+- Live probe of /n8n-health returned HTTP 429. Supabase list_projects showed
+  n8n-production (uwsncuowtzydylfabikj) ACTIVE_HEALTHY — backend DB fine.
+- Cloud Run logs: every request logged WARNING 429 "The request was aborted
+  because there was no available instance." A single container lifecycle at
+  07:09 UTC (Initializing -> STARTUP probe OK -> "n8n ready on port 8080" ->
+  Received SIGTERM 7s later -> crash "Cannot use a pool after calling end on the
+  pool" during shutdown). No crash loop — only one start/stop in 2h; the shutdown
+  pg-pool error is cosmetic (happens on ungraceful SIGTERM).
+- Revision inspection: active revision n8n-00027 had maxScale=1, minScale=0,
+  containerConcurrency=80. Re-probing returned 429 with body "Rate exceeded."
+
+Diagnosis: not a billing/Supabase/crash problem. The service was wedged in Cloud
+Run's max-instances rate-limit state — with maxScale=1 the single instance
+scaled to zero at 07:09 and Cloud Run then refused to bring it back, returning
+429 "Rate exceeded" to every caller (browser health heartbeat + pg_cron webhooks
+all piling onto a cold start it wouldn't serve). "Hit the cap limit" = the
+maxScale=1 instance cap.
+
+Fix applied (via PowerShell per the gcloud-on-Windows gotcha):
+1. `gcloud run services update n8n --min-instances=1 --no-cpu-throttling`
+   (re-passed --no-cpu-throttling to preserve gotcha #1). Deployed revision
+   n8n-00028-zrw, Ready=True, 100% traffic. Forcing min=1 both created a fresh
+   revision (clearing the stuck routing) and guaranteed a healthy warm instance.
+2. Verified: /n8n-health -> 200 {"status":"ok"} on repeated calls (app + Supabase
+   healthy). /healthz/readiness and / returned 404 as expected (Cloud Run
+   reserves /healthz*, which is why the deploy uses N8N_ENDPOINT_HEALTH=/n8n-health).
+3. Restored free tier: `gcloud run services update n8n --min-instances=0
+   --no-cpu-throttling` (an always-on instance would blow past the free tier;
+   it was the weekday-afternoon idle window, outside the 05:50-07:05 warm
+   bracket). Deployed revision n8n-00029-748.
+4. Final verification: minScale=0 (annotation absent), maxScale=1,
+   cpu-throttling=false (gotcha #1 intact), and a cold start from zero served
+   /n8n-health -> 200 {"status":"ok"}, proving the wedge is genuinely cleared,
+   not just masked by the warm instance.
+
+Reported the service is back up. Noted this looked like a transient Cloud Run
+wedge (it ran fine at maxScale=1 for two weeks) and offered, if it recurs, to
+bump maxScale to 2 for headroom during the morning webhook burst (no idle cost —
+you only pay for instances that actually run). Left it at the known-good
+maxScale=1 pending the user's call.
+
+--------------------------------------------------------------------------------
+USER:
+/dcp
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Saved this transcript (no redactions needed — no secrets appeared in the
+session). Added an INCIDENT 2026-09-25 entry to as_built.txt for the 429
+"Rate exceeded" wedge and recovery. Added gotcha #8 to CLAUDE.md documenting the
+429 "Rate exceeded" / max=1 wedge, its signature, and the recovery recipe.
+Committed + pushed to origin/master.
+
+================================================================================
+END OF EXPORT
+================================================================================

@@ -223,6 +223,22 @@ select cron.schedule('n8n-linkedin-comment-enrichment-sheet-update', '40 22 * * 
 $$);
 
 -- ---------------------------------------------------------------------------
+-- Closed Threads Processing  (added 2026-09-24)
+--   WEEKLY, Mondays only. Populates closed_sequence_threads with the week's
+--   newly-closed/unresponsive threads. Paired with the alternate-lead-finder
+--   Supabase edge function (project aivitcomiywiysrfwqxt) which runs 55 min
+--   later (6:55 AM PHT) to find alternate contacts for those rows.
+--   6:00 AM PHT sharp = 22:00 UTC. Monday PHT = Sunday UTC, so dow 0 (not 1).
+-- ---------------------------------------------------------------------------
+
+-- Closed Threads Processing | 6:00 AM Mon PHT | 22:00 UTC Sun
+select cron.schedule('n8n-closed-threads-processing', '0 22 * * 0', $$
+  select net.http_get(
+    url := 'https://n8n-659687081407.australia-southeast1.run.app/webhook/8fe86e56-7c2f-45cd-9658-ab653f9f2559',
+    timeout_milliseconds := 30000);
+$$);
+
+-- ---------------------------------------------------------------------------
 -- NOT SCHEDULED (kept here for reference, intentionally NOT live)
 -- ---------------------------------------------------------------------------
 -- n8n-batch-mailer (webhook 18166a62-3c79-4f66-8597-59ff30469cbe) is NOT in the

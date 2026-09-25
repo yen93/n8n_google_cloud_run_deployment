@@ -1,6 +1,6 @@
 ================================================================================
 AS-BUILT — n8n on Google Cloud Run
-Last updated: 2026-09-18
+Last updated: 2026-09-25
 ================================================================================
 
 CONTAINER IMAGE
@@ -147,6 +147,18 @@ AUTOMATIONS / ROUTINES
   function") before queuing. pg_cron fired on time; the command was the problem.
   Fixed by re-running cron.schedule() with a clean URL; verified with a manual
   net.http_get -> HTTP 200. Rule: never put a SQL "-- comment" inside a url string.
+- INCIDENT 2026-09-25: service went unreachable — every request returned Cloud
+  Run 429 "Rate exceeded" / "no available instance". NOT billing (billingEnabled
+  true), NOT Supabase (ACTIVE_HEALTHY), NOT a crash loop (container started clean,
+  probe OK, then a normal SIGTERM scale-down at 07:09 UTC). The maxScale=1 revision
+  (n8n-00027) got wedged in Cloud Run's instance-cap rate-limit state after scaling
+  to zero and would not bring the single instance back. Recovered by deploying a
+  fresh revision with min-instances=1 (n8n-00028) to clear the stuck routing +
+  force a warm instance, verifying /n8n-health -> 200, then restoring
+  min-instances=0 (n8n-00029). Ended at the same config (min=0, max=1,
+  cpu-throttling=false). Ran fine at max=1 for two weeks, so treated as a transient
+  Cloud Run wedge; if it recurs, bump maxScale to 2 for burst headroom (no idle
+  cost). See CLAUDE.md gotcha #8.
 - COST (Cloud Run, always-allocated 1 vCPU + 1 GiB): now that only once-daily jobs
   remain, container uptime is minimal (~daily 7-9:30 batch), so ~$0-3/month
   (mostly within the free tier). Was heading to ~$12-18/month with the intraday

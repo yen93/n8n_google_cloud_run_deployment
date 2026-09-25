@@ -109,6 +109,25 @@ See `DEPLOYMENT.md` for the full runbook and `as_built.txt` for the current inve
      `659687081407-compute@` — run.admin alone gives a silent **403** (the PATCH
      deploys a new revision as that runtime SA). Check failures in Cloud Logging
      (`resource.type="cloud_scheduler_job"`), not the job's own status.
+8. **429 "Rate exceeded" / "no available instance" = a wedged `maxScale=1`
+   revision, NOT a billing or DB outage (seen 2026-09-25).** The whole service can
+   go unreachable with every request returning Cloud Run 429 while the service
+   still reports `Ready=True`. Before touching anything, rule out the false alarms:
+   `gcloud billing projects describe` (billingEnabled), Supabase status
+   (ACTIVE_HEALTHY), and the logs — one clean start + a normal SIGTERM scale-down
+   is NOT a crash loop (the shutdown `Cannot use a pool after calling end on the
+   pool` error is cosmetic). The real cause: with `maxScale=1` the single instance
+   scales to zero and Cloud Run then wedges, refusing to bring it back and
+   rate-limiting every caller (browser health heartbeat + pg_cron webhooks pile on).
+   **Recovery:** deploy a fresh revision AND force a warm instance in one step —
+   `gcloud run services update n8n --region=australia-southeast1 --min-instances=1
+   --no-cpu-throttling` (re-pass `--no-cpu-throttling`, gotcha #1; use the
+   PowerShell tool, gotcha #5). Verify `curl <url>/n8n-health` → 200
+   `{"status":"ok"}`, then restore free tier with `--min-instances=0
+   --no-cpu-throttling` (min=1 always-on blows past the free tier). Confirm the fix
+   with a cold start from zero, not just the warm instance. Ran fine at max=1 for
+   two weeks, so treat as a transient wedge; if it recurs, `--max-instances=2` adds
+   burst headroom at no idle cost (you only pay for instances that actually run).
 
 ## Build & redeploy
 ```
