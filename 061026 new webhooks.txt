@@ -1,0 +1,14 @@
+Batch Mailer: ai_scraped_soc_med_leads
+https://n8n-659687081407.australia-southeast1.run.app/webhook/86d26274-f8f8-4abf-9457-e144c42d5ee1
+6:30 AM PH Time Mon-Fri
+
+Batch Mailer: manually_found_leads
+https://n8n-659687081407.australia-southeast1.run.app/webhook/49bc9abe-eaed-49ec-b749-8e051090896c
+6:30 AM PH Time Mon-Fri
+
+Batch Mailer: AI soc med alternate leads
+https://n8n-659687081407.australia-southeast1.run.app/webhook/b17ac35b-0235-484b-be50-c3783ac77a8c
+6:30 AM PH Time Mon-Fri
+
+Batch Mailer: manually listed insta leads
+https://n8n-659687081407.australia-southeast1.run.app/webhook/e6ee0878-b326-4155-a9f0-fd826104b473

@@ -1,0 +1,50 @@
+================================================================================
+CHAT HISTORY EXPORT — 2026-10-09
+Session: Deleted the Supabase pg_cron job for the "Batch Mailer: manually listed
+insta leads" webhook (jobid 37), then reconciled schedule_webhooks.sql to match.
+================================================================================
+
+--------------------------------------------------------------------------------
+USER:
+delete sched cron for the Batch Mailer: manually listed insta leads
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Grepped the repo for the job and located it: cron job
+n8n-batch-mailer-manually-listed-insta-leads (jobid 37, webhook
+e6ee0878-b326-4155-a9f0-fd826104b473), one of the four Batch Mailer jobs added
+earlier the same day (2026-10-09).
+
+Confirmed it was live in Supabase (project uwsncuowtzydylfabikj) via a
+cron.job query: jobid 37, schedule '30 22 * * 0-4', active=true. Then ran
+cron.unschedule('n8n-batch-mailer-manually-listed-insta-leads') -> returned
+true, and re-queried cron.job to confirm it was gone (empty result). The other
+three Batch Mailer jobs (ai_scraped_soc_med_leads, manually_found_leads, AI soc
+med alternate leads) stay live, all still '30 22 * * 0-4'.
+
+Updated schedule_webhooks.sql to match live state: fixed the block header from
+"Four" to three live mailers (noting the 4th was unscheduled 2026-10-09), and
+replaced the manually-listed-insta-leads cron.schedule() block with a commented-
+out UNSCHEDULED note that preserves the webhook id and the restore commands.
+
+Flagged that as_built.txt still referenced "four at 06:30" / "jobid 34-37" and
+offered to update those too; the user then ran /dcp.
+
+--------------------------------------------------------------------------------
+USER:
+/dcp
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Saved this transcript (no redactions needed — no secrets appeared; webhook URLs
+are public GUID-path with no tokens, and only the project ref was shown).
+Updated as_built.txt: removed the jobid-37 line from the live cron run-order
+list, changed the "four at 06:30" batch-mailer references to three, and noted the
+2026-10-09 deletion in both the Batch Mailers block and the schedule_webhooks.sql
+history line. CLAUDE.md left unchanged (no new conventions or gotchas — unschedule
+of one job needs none). .gitignore left unchanged (no new sensitive files).
+Did NOT commit or push — the user does that themselves.
+
+================================================================================
+END OF EXPORT
+================================================================================

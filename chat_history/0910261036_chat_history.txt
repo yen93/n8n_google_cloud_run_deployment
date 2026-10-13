@@ -1,0 +1,68 @@
+================================================================================
+CHAT HISTORY EXPORT — 2026-10-09
+Session: Scheduled four new "Batch Mailer" webhook triggers (one per lead source)
+as Supabase pg_cron jobs at 6:30 AM PH Mon-Fri, then test-fired all four and
+confirmed each returned HTTP 200 "Workflow was started".
+================================================================================
+
+--------------------------------------------------------------------------------
+USER:
+Schedule these new webhooks, then fire them all afterward as a test. Source file:
+"061026 new webhooks.txt" (repo root).
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Read the source file and the existing schedule_webhooks.sql + live cron.job set to
+match conventions. The file listed four "Batch Mailer" webhooks (public GUID-path
+Production URLs on the n8n Cloud Run service), one per lead source:
+  - ai_scraped_soc_med_leads      86d26274-f8f8-4abf-9457-e144c42d5ee1  6:30 AM PH Mon-Fri
+  - manually_found_leads          49bc9abe-eaed-49ec-b749-8e051090896c  6:30 AM PH Mon-Fri
+  - AI soc med alternate leads    b17ac35b-0235-484b-be50-c3783ac77a8c  6:30 AM PH Mon-Fri
+  - manually listed insta leads   e6ee0878-b326-4155-a9f0-fd826104b473  (no time in file)
+
+Queried cron.job first — no existing batch-mailer jobs, so these are all new
+(highest existing jobid was 33). The 4th webhook had no schedule time in the file;
+asked the user, who confirmed 6:30 AM PH Mon-Fri to match the other three.
+
+Applied the convention: 6:30 AM Manila = 22:30 UTC, and because a 22:xx UTC run
+lands the next morning in Manila, PHT weekday = UTC weekday + 1, so Mon-Fri PHT =
+Sun-Thu UTC = dow 0-4. All four jobs: '30 22 * * 0-4'. They share the 22:30 minute
+with n8n-linkedin-comments-enrichment (jobid 5) — harmless, pg_cron fires each
+named job independently, and 06:30 is inside the 05:50-07:05 keep-warm window so
+no cold start at the real trigger time.
+
+Added a "Batch Mailers (per lead source)" block to schedule_webhooks.sql (above
+the NOT-SCHEDULED reference note) and applied the four cron.schedule() upserts to
+Supabase (project uwsncuowtzydylfabikj). Verified all four live and active:
+    jobid 34  n8n-batch-mailer-ai-scraped-soc-med-leads     30 22 * * 0-4
+    jobid 35  n8n-batch-mailer-manually-found-leads         30 22 * * 0-4
+    jobid 36  n8n-batch-mailer-ai-soc-med-alternate-leads   30 22 * * 0-4
+    jobid 37  n8n-batch-mailer-manually-listed-insta-leads  30 22 * * 0-4
+
+Test fire: invoked all four now via net.http_get (the same pg_net path cron uses),
+capturing request ids 351-354, then polled net._http_response. All four returned
+HTTP 200 with body "Workflow was started" (no errors). Test passed.
+
+Noted these are distinct from the old unscheduled n8n-batch-mailer (webhook
+18166a62), which stays off, and left the git commit to the user per repo
+convention.
+
+--------------------------------------------------------------------------------
+USER:
+/dcp
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Saved this transcript (no redactions needed — no secrets appeared; webhook URLs
+are public GUID-path with no tokens). Updated as_built.txt: added the four batch
+mailers to the live cron run-order list at 06:30, added a note about their
+addition + test fire, refreshed the live-job count, and bumped Last updated to
+2026-10-09. CLAUDE.md left unchanged (no new conventions or gotchas this session —
+the batch mailers follow the existing dow-0-4 / shared-minute patterns already
+documented). .gitignore left unchanged (the new .txt source is non-sensitive —
+public webhook URLs, no credentials). Did NOT commit or push — the user does that
+themselves.
+
+================================================================================
+END OF EXPORT
+================================================================================

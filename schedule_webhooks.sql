@@ -239,6 +239,69 @@ select cron.schedule('n8n-closed-threads-processing', '0 22 * * 0', $$
 $$);
 
 -- ---------------------------------------------------------------------------
+-- Batch Mailers (per lead source)  (added 2026-10-09)
+--   "Batch Mailer" webhooks, one per lead source. All fire together at
+--   6:30 AM Manila (file "061026 new webhooks.txt"). Originally four; the 4th,
+--   manually-listed-insta-leads (webhook e6ee0878), was unscheduled 2026-10-09
+--   (see note below). A separate "alternate cold leads" mailer (webhook e64817f4,
+--   jobid 38) was added 2026-10-09 from "091026 new webhooks.txt", and
+--   ai_scraped_cold_leads (webhook d363d508, jobid 39) 2026-10-13 from
+--   "131026 new webhooks.txt" -- five live.
+--   They share the 22:30 UTC minute with n8n-linkedin-comments-
+--   enrichment (jobid 5); pg_cron fires each named job independently and 06:30
+--   AM is inside the 05:50-07:05 Manila keep-warm window, so no cold start.
+--   dow 0-4 (Sun-Thu UTC = Mon-Fri PHT), same rule as the blocks above.
+--   NOTE: distinct from the unscheduled n8n-batch-mailer (webhook 18166a62) below.
+-- ---------------------------------------------------------------------------
+
+-- Batch Mailer: ai_scraped_soc_med_leads      | 6:30 AM  | 22:30 UTC
+select cron.schedule('n8n-batch-mailer-ai-scraped-soc-med-leads', '30 22 * * 0-4', $$
+  select net.http_get(
+    url := 'https://n8n-659687081407.australia-southeast1.run.app/webhook/86d26274-f8f8-4abf-9457-e144c42d5ee1',
+    timeout_milliseconds := 30000);
+$$);
+
+-- Batch Mailer: manually_found_leads          | 6:30 AM  | 22:30 UTC
+select cron.schedule('n8n-batch-mailer-manually-found-leads', '30 22 * * 0-4', $$
+  select net.http_get(
+    url := 'https://n8n-659687081407.australia-southeast1.run.app/webhook/49bc9abe-eaed-49ec-b749-8e051090896c',
+    timeout_milliseconds := 30000);
+$$);
+
+-- Batch Mailer: AI soc med alternate leads    | 6:30 AM  | 22:30 UTC
+select cron.schedule('n8n-batch-mailer-ai-soc-med-alternate-leads', '30 22 * * 0-4', $$
+  select net.http_get(
+    url := 'https://n8n-659687081407.australia-southeast1.run.app/webhook/b17ac35b-0235-484b-be50-c3783ac77a8c',
+    timeout_milliseconds := 30000);
+$$);
+
+-- Batch Mailer: alternate cold leads          | 6:30 AM  | 22:30 UTC
+--   (added 2026-10-09, jobid 38, file "091026 new webhooks.txt")
+select cron.schedule('n8n-batch-mailer-alternate-cold-leads', '30 22 * * 0-4', $$
+  select net.http_get(
+    url := 'https://n8n-659687081407.australia-southeast1.run.app/webhook/e64817f4-c359-4bc2-a40f-ca9e23b92fe7',
+    timeout_milliseconds := 30000);
+$$);
+
+-- Batch Mailer: ai_scraped_cold_leads         | 6:30 AM  | 22:30 UTC
+--   (added 2026-10-13, jobid 39, file "131026 new webhooks.txt")
+select cron.schedule('n8n-batch-mailer-ai-scraped-cold-leads', '30 22 * * 0-4', $$
+  select net.http_get(
+    url := 'https://n8n-659687081407.australia-southeast1.run.app/webhook/d363d508-d222-4783-acef-35efa48240b7',
+    timeout_milliseconds := 30000);
+$$);
+
+-- Batch Mailer: manually listed insta leads   | UNSCHEDULED 2026-10-09
+--   (jobid 37, webhook e6ee0878-b326-4155-a9f0-fd826104b473) removed at user
+--   request. To restore, re-add the cron.schedule() block below:
+-- select cron.unschedule('n8n-batch-mailer-manually-listed-insta-leads');
+-- select cron.schedule('n8n-batch-mailer-manually-listed-insta-leads', '30 22 * * 0-4', $$
+--   select net.http_get(
+--     url := 'https://n8n-659687081407.australia-southeast1.run.app/webhook/e6ee0878-b326-4155-a9f0-fd826104b473',
+--     timeout_milliseconds := 30000);
+-- $$);
+
+-- ---------------------------------------------------------------------------
 -- NOT SCHEDULED (kept here for reference, intentionally NOT live)
 -- ---------------------------------------------------------------------------
 -- n8n-batch-mailer (webhook 18166a62-3c79-4f66-8597-59ff30469cbe) is NOT in the

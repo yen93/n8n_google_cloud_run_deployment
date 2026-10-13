@@ -1,0 +1,55 @@
+================================================================================
+CHAT HISTORY EXPORT — 2026-10-09
+Session: Scheduled a new "BATCH MAILER: alternate cold leads" n8n webhook as a
+Supabase pg_cron job (jobid 38, 6:30 AM Manila Mon-Fri), verified + test-fired,
+and reconciled schedule_webhooks.sql and as_built.txt.
+================================================================================
+
+--------------------------------------------------------------------------------
+USER:
+schedule this: "C:\Users\Cloverly\claude_code\n8n_google_cloud_run_deployment\091026 new webhooks.txt"
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Read the file: a single webhook — "BATCH MAILER: alternate cold leads",
+URL .../webhook/e64817f4-c359-4bc2-a40f-ca9e23b92fe7, to run 6:30 AM PH Time
+Mon-Fri. Reviewed schedule_webhooks.sql to match the repo's pattern and confirmed
+the conversion: 6:30 AM PHT Mon-Fri = 22:30 UTC, dow 0-4 (the job fires the prior
+UTC day, so Mon-Fri PHT = Sun-Thu UTC — the standard rule in this repo). It fits
+the existing Batch Mailers block (others already at 22:30).
+
+Queried cron.job in Supabase (project uwsncuowtzydylfabikj) for existing
+batch-mailer/alternate jobs: found jobid 34-36 live, no "alternate cold leads"
+job present (distinct from the existing n8n-batch-mailer-ai-soc-med-alternate-leads,
+jobid 36). Scheduled it with cron.schedule('n8n-batch-mailer-alternate-cold-leads',
+'30 22 * * 0-4', ...) -> returned jobid 38. Re-queried cron.job to confirm:
+jobid 38, schedule '30 22 * * 0-4', active=true, command with the correct webhook
+URL and timeout_milliseconds := 30000.
+
+Updated schedule_webhooks.sql: added the cron.schedule() block for the new job in
+the Batch Mailers section and bumped the block header from "three remain live" to
+"four live" (jobid 34-36, 38). Updated as_built.txt: added the jobid 38 line to the
+live cron run-order list and expanded the Batch Mailers narrative to record the
+2026-10-09 addition from "091026 new webhooks.txt".
+
+Test-fired the webhook via net.http_get (request id 355); checked net._http_response
+-> status_code 200, content {"message":"Workflow was started"}. Reported the job as
+live, verified, and documented, and noted the files weren't committed (left to the
+user per repo convention).
+
+--------------------------------------------------------------------------------
+USER:
+/dcp
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Saved this transcript (no redactions needed — no secrets appeared; webhook URLs are
+public GUID-path with no tokens, and only the project ref was shown). Updated
+as_built.txt during the session to reflect jobid 38 (already done above). CLAUDE.md
+left unchanged (no new conventions or gotchas — adding one more webhook job uses the
+existing documented pattern). .gitignore left unchanged (no new sensitive files).
+Did NOT commit or push — the user does that themselves.
+
+================================================================================
+END OF EXPORT
+================================================================================

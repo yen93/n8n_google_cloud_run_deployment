@@ -1,6 +1,6 @@
 ================================================================================
 AS-BUILT — n8n on Google Cloud Run
-Last updated: 2026-09-25
+Last updated: 2026-10-13
 ================================================================================
 
 CONTAINER IMAGE
@@ -65,8 +65,13 @@ AUTOMATIONS / ROUTINES
   external HTTP calls to per-workflow Webhook Trigger URLs, driven by Supabase
   pg_cron + pg_net (fully free, in-stack). Each daily job fires an HTTP GET that
   both wakes the container and triggers the workflow.
-- LIVE cron jobs (cron.job in Supabase, verified 2026-09-18): 20 active,
-  staggered every 5 min from 06:00-06:55 AM Manila plus several at 07:00, MON-FRI PHT
+- LIVE cron jobs (cron.job in Supabase, verified 2026-10-13): 24 active daily
+  weekday jobs (dow 0-4) in the 06:00-07:00 AM Manila block, plus 1 weekly Monday
+  job (n8n-closed-threads-processing) and 1 inactive job
+  (n8n-linkedin-comment-enrichment-sheet-update). Daily jobs are
+  staggered every 5 min from 06:00-06:55 AM Manila plus several at 07:00, and now
+  five batch mailers at 06:30 (jobid 34-36, 38-39; added 2026-10-09 and 2026-10-13),
+  MON-FRI PHT
   ONLY (stored as UTC 22:00-23:00 the prior day; pg_cron runs in UTC, no DST). Rescheduled 2026-09-16
   from the earlier ~7:00-9:30 AM spread to this tighter 6 AM block (the old 9:30 AM
   double-slot is gone), then restricted to weekdays 2026-09-16 (service fully idle
@@ -94,6 +99,15 @@ AUTOMATIONS / ROUTINES
     06:55 n8n-cold-leads-notes-3rd-followup (jobid 30, 55 22)  [shares 22:55]
     07:00 Insta Story Scraper: Log to sheet and notify Liv (jobid 14, 0 23)
     07:00 n8n-cold-leads-notes-4th-followup (jobid 31, 0 23)   [shares 23:00]
+    06:30 n8n-batch-mailer-ai-scraped-soc-med-leads     (jobid 34, 30 22) [shares 22:30]
+    06:30 n8n-batch-mailer-manually-found-leads         (jobid 35, 30 22) [shares 22:30]
+    06:30 n8n-batch-mailer-ai-soc-med-alternate-leads   (jobid 36, 30 22) [shares 22:30]
+    06:30 n8n-batch-mailer-alternate-cold-leads          (jobid 38, 30 22) [shares 22:30]
+    06:30 n8n-batch-mailer-ai-scraped-cold-leads         (jobid 39, 30 22) [shares 22:30]
+    (jobid 37 n8n-batch-mailer-manually-listed-insta-leads UNSCHEDULED 2026-10-09)
+  Also present but outside the daily weekday block: n8n-closed-threads-processing
+  (jobid 33, `0 22 * * 0` = 06:00 AM Mon PHT only, weekly) and
+  n8n-linkedin-comment-enrichment-sheet-update (jobid 32, INACTIVE).
   - AC Notes Automation (workflow 8vZG1SAYwSmcHJ2x, active): one n8n workflow holds
     BOTH the Soc Med AC-notes branches (4 stages, table follow_up_sequence_threads,
     jobid 23-26) and the Cold Leads AC-notes branches (5 stages, table
@@ -104,8 +118,23 @@ AUTOMATIONS / ROUTINES
     added 2026-09-18; Cold Leads added 2026-09-18.
   - Reconciled: n8n-linkedin-outbound-sales IS live (jobid 21, 06:15) — the earlier
     "confirm if it should be scheduled" discrepancy is resolved.
-  - n8n-batch-mailer is NOT in the live set (was in an earlier snapshot at 09:15;
-    absent as of 2026-09-16). Add a cron.schedule() block if it should run again.
+  - Batch Mailers (per lead source, added 2026-10-09): originally four new jobs from
+    "061026 new webhooks.txt", one Webhook Trigger per lead source, all at 06:30 AM
+    Manila Mon-Fri (jobid 34-37, `30 22 * * 0-4`, sharing the 22:30 minute with
+    n8n-linkedin-comments-enrichment). Test-fired all four via net.http_get on
+    2026-10-09 -> HTTP 200 "Workflow was started" each. The 4th,
+    n8n-batch-mailer-manually-listed-insta-leads (jobid 37, webhook e6ee0878), was
+    UNSCHEDULED 2026-10-09 at user request. A separate "alternate cold leads" mailer
+    (n8n-batch-mailer-alternate-cold-leads, jobid 38, webhook e64817f4) was added
+    2026-10-09 from "091026 new webhooks.txt", same 06:30 Mon-Fri slot. An
+    "ai_scraped_cold_leads" mailer (n8n-batch-mailer-ai-scraped-cold-leads, jobid
+    39, webhook d363d508) was added 2026-10-13 from "131026 new webhooks.txt", same
+    06:30 Mon-Fri slot (NOT test-fired -- it's a live mailer; left to fire on its
+    next schedule) -- five live (jobid 34-36, 38-39). These are DISTINCT from the
+    older single n8n-batch-mailer below.
+  - The older single n8n-batch-mailer (webhook 18166a62) is NOT in the live set
+    (was in an earlier snapshot at 09:15; absent as of 2026-09-16). Add a
+    cron.schedule() block if it should run again.
   - The 2 intraday-recurring jobs (Email Handling Agent every 5 min, Action Items
     Automation every 15 min, 7 AM-4 PM) were REMOVED — those workflows were moved
     to a local Docker n8n. This is what dropped the cost (no more ~9 h/day uptime).
@@ -140,7 +169,13 @@ AUTOMATIONS / ROUTINES
   dow 0-4) from `webhooks - AC Notes Automation (Follow up sequence).txt`;
   n8n-ac-notes-intro shares the 22:40 minute with n8n-insta-story-scraper and
   n8n-ac-notes-2nd-followup shares 22:50 with n8n-sales-daily-email-notification
-  (harmless — distinct named jobs, all inside the keep-warm window).
+  (harmless — distinct named jobs, all inside the keep-warm window). On 2026-10-09
+  a "Batch Mailers (per lead source)" block of four jobs (jobid 34-37, all
+  `30 22 * * 0-4`) was added from "061026 new webhooks.txt"; later the same day the
+  4th (jobid 37, manually-listed-insta-leads) was unscheduled at user request and
+  its cron.schedule() block commented out to a restore-reference note. On 2026-10-13
+  a 5th batch mailer, n8n-batch-mailer-ai-scraped-cold-leads (jobid 39, webhook
+  d363d508), was added from "131026 new webhooks.txt" in the same 06:30 Mon-Fri slot.
 - INCIDENT 2026-09-18: job 14 silently failed every run Sep 15-17 because its
   webhook URL had an inline "-- comment" ("... 5c17092 --9:30 AM PH Time") pasted
   INSIDE the URL string, so net.http_get rejected it ("Malformed input to a URL
