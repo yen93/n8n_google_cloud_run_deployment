@@ -1,0 +1,106 @@
+================================================================================
+HOW TO MANUALLY RUN "Action Items Automation" (Cloud Run n8n webhook)
+Last updated: 2026-10-15
+================================================================================
+
+WHAT THIS DOES
+  Fires an HTTP GET at the workflow's Webhook Trigger URL. That single request
+  BOTH wakes the scale-to-zero Cloud Run container AND triggers the workflow --
+  exactly what the scheduled pg_cron jobs do, just run by hand on demand.
+
+  Use this when you want an off-schedule run (testing, a one-off, or catching up a
+  missed run). The normal schedule is HOURLY 07:00-16:00 Manila (PHT), Mon-Fri --
+  you do NOT need to do this for a normal day.
+
+  NOTE: this is a LIVE workflow. Running it manually does a real run (it will
+  process / produce whatever Action Items Automation normally does), not a dry run.
+
+WEBHOOK URL
+  https://n8n-659687081407.australia-southeast1.run.app/webhook/08975797-f177-4a6f-9832-238b17f6b318
+
+  - Method: GET
+  - Auth: None (public GUID-path URL -- anyone with the link can trigger it)
+
+
+--------------------------------------------------------------------------------
+OPTION A -- Windows Command Prompt (cmd.exe)   <-- the one you asked for
+--------------------------------------------------------------------------------
+STEP 1. Open Command Prompt.
+        Press Start, type  cmd , press Enter.
+
+STEP 2. Paste this ONE line and press Enter (keep the double quotes):
+
+   curl "https://n8n-659687081407.australia-southeast1.run.app/webhook/08975797-f177-4a6f-9832-238b17f6b318"
+
+        (curl.exe ships with Windows 10/11, so nothing to install.)
+
+STEP 3. Wait for the response.
+        - If the container was asleep (cold start) the first call can take ~20-30s.
+          That is normal -- just let it sit.
+        - SUCCESS looks like an HTTP 200 and a short JSON body, e.g.
+             {"message":"Workflow was started"}
+
+STEP 4 (optional). See the status code too. Run instead:
+
+   curl -i "https://n8n-659687081407.australia-southeast1.run.app/webhook/08975797-f177-4a6f-9832-238b17f6b318"
+
+        The first line of the output shows the status, e.g.  HTTP/2 200
+
+
+--------------------------------------------------------------------------------
+OPTION B -- Windows PowerShell (alternative)
+--------------------------------------------------------------------------------
+Open PowerShell and run:
+
+   curl.exe "https://n8n-659687081407.australia-southeast1.run.app/webhook/08975797-f177-4a6f-9832-238b17f6b318"
+
+   (Use curl.exe -- the bare name "curl" in PowerShell is an alias for
+    Invoke-WebRequest and takes different arguments.)
+
+Or the native PowerShell way:
+
+   Invoke-RestMethod -Uri "https://n8n-659687081407.australia-southeast1.run.app/webhook/08975797-f177-4a6f-9832-238b17f6b318"
+
+
+--------------------------------------------------------------------------------
+OPTION C -- Browser (quickest, no typing)
+--------------------------------------------------------------------------------
+Because the webhook is a GET with no auth, you can just paste the URL into any
+browser address bar and press Enter. A 200 / "Workflow was started" page means it
+fired. (First hit may take ~30s on a cold start.)
+
+
+--------------------------------------------------------------------------------
+WHAT A FAILURE LOOKS LIKE (and what it means)
+--------------------------------------------------------------------------------
+  HTTP 404  -> wrong URL, or the workflow is not Active in n8n, or the webhook is
+               registered as a different HTTP method (this one is GET).
+  HTTP 429  -> "Rate exceeded" Cloud Run wedge -- see CLAUDE.md gotcha #8.
+  Timeout / no response for >60s -> container stuck; retry once, then check the
+               Cloud Run logs.
+
+
+--------------------------------------------------------------------------------
+HOW TO CONFIRM IT ACTUALLY RAN (server side)
+--------------------------------------------------------------------------------
+A 200 means n8n accepted and STARTED the workflow. To confirm end-to-end, check in
+n8n or in Supabase:
+
+  - n8n UI: open the "Action Items Automation" workflow -> Executions tab -> you
+    should see a new execution at the time you fired it.
+
+  - Supabase (project n8n-production, ref uwsncuowtzydylfabikj) -- the HTTP result
+    the scheduler/manual calls produce, newest first:
+        select id, status_code, created
+        from net._http_response order by created desc limit 10;
+    (status_code 200 = n8n answered OK.)
+
+
+--------------------------------------------------------------------------------
+RELATED
+--------------------------------------------------------------------------------
+  - schedule_webhooks.sql  -- the pg_cron jobs that run this on schedule
+                              (jobid 45 = 07:00 PHT, jobid 46 = 08:00-16:00 PHT).
+  - as_built.txt           -- full inventory + cost notes.
+  - CLAUDE.md              -- deployment gotchas (health endpoint, 429 wedge, etc).
+================================================================================

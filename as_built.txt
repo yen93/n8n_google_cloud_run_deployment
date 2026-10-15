@@ -65,9 +65,11 @@ AUTOMATIONS / ROUTINES
   external HTTP calls to per-workflow Webhook Trigger URLs, driven by Supabase
   pg_cron + pg_net (fully free, in-stack). Each daily job fires an HTTP GET that
   both wakes the container and triggers the workflow.
-- LIVE cron jobs (cron.job in Supabase, verified 2026-10-15): 29 active daily
-  weekday jobs (dow 0-4) in the 06:00-07:00 AM Manila block, plus 1 weekly Monday
-  job (n8n-closed-threads-processing); no inactive jobs. Daily jobs are
+- LIVE cron jobs (cron.job in Supabase, verified 2026-10-15): 31 active weekday
+  jobs plus 1 weekly Monday job (n8n-closed-threads-processing); no inactive jobs.
+  29 of the weekday jobs sit in the 06:00-07:00 AM Manila morning block (dow 0-4);
+  the other 2 are the new HOURLY Action Items Automation pair (jobid 45-46, added
+  2026-10-15) that fires every hour 07:00-16:00 Manila Mon-Fri (see below). Daily jobs are
   staggered every 5 min from 06:00-06:55 AM Manila plus several at 07:00, and now
   five batch mailers at 06:30 (jobid 34-36, 38-39; added 2026-10-09 and 2026-10-13),
   MON-FRI PHT
@@ -108,8 +110,23 @@ AUTOMATIONS / ROUTINES
     06:30 n8n-comments-scraper-log-email-to-sheet (jobid 44, 30 22) [shares 22:30; added 2026-10-15]
     06:40 n8n-find-org-of-commentor            (jobid 41, 40 22) [reactivated+renamed 2026-10-15; ex-jobid 32, was INACTIVE]
     (jobid 37 n8n-batch-mailer-manually-listed-insta-leads UNSCHEDULED 2026-10-09)
-  Also present but outside the daily weekday block: n8n-closed-threads-processing
-  (jobid 33, `0 22 * * 0` = 06:00 AM Mon PHT only, weekly).
+  Also present but outside the morning block:
+    - n8n-closed-threads-processing (jobid 33, `0 22 * * 0` = 06:00 AM Mon PHT only,
+      weekly).
+    - Action Items Automation (INTRADAY, hourly 07:00-16:00 Manila Mon-Fri, added
+      2026-10-15), webhook 08975797-f177-4a6f-9832-238b17f6b318, as a TWO-job pair
+      because 07:00-16:00 Manila straddles two UTC days:
+        n8n-action-items-automation-0700 (jobid 45, `0 23 * * 0-4` = 07:00 AM PHT)
+        n8n-action-items-automation      (jobid 46, `0 0-8 * * 1-5` = 08:00-16:00 PHT)
+      This workflow moved back onto Cloud Run and was re-scheduled hourly (10 runs/day)
+      at user request. Runs are OUTSIDE the 05:50-07:05 keep-warm window, so all but
+      07:00 are cold starts (timeout_milliseconds := 30000). COST: hourly wakes the
+      container ~15 min then it scales to zero (~3 h/day uptime) -- stays near the $0
+      free tier, unlike the old every-15-min Action Items (removed 2026-09-14, ~9 h/day).
+      WATCH: more frequent scale-to-zero cycles at max-instances=1 slightly raise the
+      429-wedge risk (CLAUDE.md gotcha #8); bump maxScale to 2 if it recurs. NOT
+      test-fired (live workflow); confirm first real run via cron.job_run_details +
+      net._http_response.
   - AC Notes Automation (workflow 8vZG1SAYwSmcHJ2x, active): one n8n workflow holds
     BOTH the Soc Med AC-notes branches (4 stages, table follow_up_sequence_threads,
     jobid 23-26) and the Cold Leads AC-notes branches (5 stages, table
@@ -138,8 +155,12 @@ AUTOMATIONS / ROUTINES
     (was in an earlier snapshot at 09:15; absent as of 2026-09-16). Add a
     cron.schedule() block if it should run again.
   - The 2 intraday-recurring jobs (Email Handling Agent every 5 min, Action Items
-    Automation every 15 min, 7 AM-4 PM) were REMOVED — those workflows were moved
-    to a local Docker n8n. This is what dropped the cost (no more ~9 h/day uptime).
+    Automation every 15 min, 7 AM-4 PM) were REMOVED 2026-09-14 — those workflows
+    moved to a local Docker n8n. This is what dropped the cost (no more ~9 h/day
+    uptime). UPDATE 2026-10-15: Action Items Automation moved back onto Cloud Run and
+    was re-scheduled, but HOURLY (not every-15-min) 07:00-16:00 Mon-Fri — ~3 h/day
+    uptime, near free tier (jobid 45-46; see the intraday note above). Email Handling
+    Agent remains local/unscheduled here.
 - KEEP-WARM WINDOW (Cloud Scheduler, added + verified 2026-09-16): 2 jobs in
   region australia-southeast1 flip the service's min-instances via the Cloud Run
   Admin API v2 so the container is guaranteed warm around the morning batch:

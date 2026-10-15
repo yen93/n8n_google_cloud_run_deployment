@@ -341,15 +341,49 @@ select cron.schedule('n8n-comments-scraper-log-email-to-sheet', '30 22 * * 0-4',
 $$);
 
 -- ---------------------------------------------------------------------------
+-- Action Items Automation  (added 2026-10-15)
+--   INTRADAY, hourly 07:00-16:00 Manila (10 runs/day), Mon-Fri. This workflow was
+--   moved back onto Cloud Run (webhook 08975797...), re-introducing an intraday
+--   schedule after the earlier every-15-min version was removed 2026-09-14 (see
+--   NOT-SCHEDULED note below). Hourly (not every-15-min) is deliberately gentle:
+--   each ping wakes the container ~15 min then it scales to zero, so ~3 h/day
+--   uptime (~10 runs x 07:00-16:00) -- stays near the $0 free tier, vs the old
+--   every-15-min version that kept it awake ~9 h/day (~$12-18/mo).
+--   These runs are OUTSIDE the 05:50-07:05 Manila keep-warm window, so every run
+--   except 07:00 is a cold start -- timeout_milliseconds := 30000 covers it.
+--   Split into TWO jobs because 07:00-16:00 Manila straddles two UTC days:
+--     07:00 PHT      = 23:00 UTC prior day -> dow 0-4 (Sun-Thu UTC = Mon-Fri PHT)
+--     08:00-16:00 PHT = 00:00-08:00 UTC    -> dow 1-5 (Mon-Fri UTC = Mon-Fri PHT)
+--   The 07:00 job shares the 0 23 UTC minute with jobid 14 + 31 (harmless).
+-- ---------------------------------------------------------------------------
+
+-- Action Items Automation: 07:00 edge | 7:00 AM PHT | 23:00 UTC prior day
+select cron.schedule('n8n-action-items-automation-0700', '0 23 * * 0-4', $$
+  select net.http_get(
+    url := 'https://n8n-659687081407.australia-southeast1.run.app/webhook/08975797-f177-4a6f-9832-238b17f6b318',
+    timeout_milliseconds := 30000);
+$$);
+
+-- Action Items Automation: main block | 8:00 AM-4:00 PM PHT | 00:00-08:00 UTC
+select cron.schedule('n8n-action-items-automation', '0 0-8 * * 1-5', $$
+  select net.http_get(
+    url := 'https://n8n-659687081407.australia-southeast1.run.app/webhook/08975797-f177-4a6f-9832-238b17f6b318',
+    timeout_milliseconds := 30000);
+$$);
+
+-- ---------------------------------------------------------------------------
 -- NOT SCHEDULED (kept here for reference, intentionally NOT live)
 -- ---------------------------------------------------------------------------
 -- n8n-batch-mailer (webhook 18166a62-3c79-4f66-8597-59ff30469cbe) is NOT in the
 --   live cron set as of 2026-09-16. To schedule it, add a cron.schedule() block
 --   above with an unused 5-minute slot (e.g. '55 22 * * *' = 6:55 AM PHT).
--- The two intraday-recurring jobs (Email Handling Agent every 5 min, Action Items
---   Automation every 15 min, 7 AM-4 PM Manila) were REMOVED on 2026-09-14 when
---   those workflows moved to a local Docker n8n. Do NOT re-add them here — running
---   them every few minutes keeps the container awake ~9 h/day (~$12-18/mo).
+-- Email Handling Agent (every 5 min) was REMOVED on 2026-09-14 when it moved to a
+--   local Docker n8n. Do NOT re-add it here — every few minutes keeps the container
+--   awake ~9 h/day (~$12-18/mo).
+-- Action Items Automation was ALSO removed 2026-09-14 (it was every 15 min) but was
+--   re-added 2026-10-15 as an HOURLY 07:00-16:00 Mon-Fri schedule (see the block
+--   above) after moving back onto Cloud Run — hourly is cheap enough to stay near
+--   the free tier; every-15-min was not.
 
 -- ============================================================================
 -- VERIFY  (run after the above)
