@@ -1,0 +1,93 @@
+================================================================================
+CHAT HISTORY EXPORT — 2026-10-15
+Session: Scheduled 3 new n8n webhooks ("151026 new webhooks.txt") as Supabase
+pg_cron jobs (jobid 42-44, Mon-Fri). Checked 2 existing webhooks: renamed both to
+their real workflow names and REACTIVATED one that was silently inactive (jobid 32
+-> 41). Reconciled schedule_webhooks.sql and as_built.txt.
+================================================================================
+
+--------------------------------------------------------------------------------
+USER:
+"C:\Users\Cloverly\claude_code\n8n_google_cloud_run_deployment\151026 new webhooks.txt"
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Read the file. It asked for two things:
+  1. Schedule 3 new webhooks, all "Daily":
+     - LinkedIn Company Lead Finder (webhook e70fe2f8) — 6 AM PH
+     - comments scraper: email finder (webhook 5ed8979a) — 6 AM PH
+     - comments scraper: log email to sheet (webhook 74242e51) — 6:30 AM PH
+  2. "Just check if these webhooks already have scheds":
+     - e7e0b196-e1a4-4340-8af7-c6eb93509e46
+     - d13096b0-03af-400a-8f4c-1b37cdaf8a9b
+
+Read schedule_webhooks.sql to confirm conventions (UTC = PHT-8, dow 0-4 for Mon-Fri
+PHT, net.http_get GET/no-auth, 30s timeout, idempotent cron.schedule by name).
+Queried cron.job in Supabase project uwsncuowtzydylfabikj, extracting each job's
+webhook UUID, to check all five UUIDs against the live set:
+  - e7e0b196 = jobid 5 n8n-linkedin-comments-enrichment, 30 22 * * 0-4, ACTIVE.
+  - d13096b0 = jobid 32 n8n-linkedin-comment-enrichment-sheet-update, 40 22 * * 0-4,
+    active=FALSE (scheduled but not firing — a real finding, not documented before).
+  - The 3 new UUIDs: none present -> genuinely new.
+
+Flagged the inactive jobid 32 to the user. Since the source file said "Daily" but
+every other job in this stack is Mon-Fri (and the Cloud Run keep-warm window is
+Mon-Fri only), asked two clarifying questions: (a) schedule the 3 new ones Mon-Fri
+or literal every-day; (b) reactivate the inactive jobid 32?
+
+--------------------------------------------------------------------------------
+USER:
+(answers) 1. Mon-Fri (match convention).
+2. e7e0b196 is really the workflow "Get linkedin_posts to be processed";
+   d13096b0 is really "Find org of commentor"; update the job names as needed and
+   both should be active.
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Applied everything in one SQL batch against project uwsncuowtzydylfabikj:
+  - Renamed jobid 5 -> n8n-get-linkedin-posts-to-be-processed via
+    unschedule+reschedule (same webhook e7e0b196, 30 22 * * 0-4, stays active).
+  - Renamed jobid 32 -> n8n-find-org-of-commentor via unschedule+reschedule (same
+    webhook d13096b0, 40 22 * * 0-4) — the reschedule recreates it ACTIVE, so this
+    both renamed and reactivated it.
+  - Added 3 new Mon-Fri jobs: n8n-linkedin-company-lead-finder (0 22 * * 0-4,
+    e70fe2f8), n8n-comments-scraper-email-finder (0 22 * * 0-4, 5ed8979a),
+    n8n-comments-scraper-log-email-to-sheet (30 22 * * 0-4, 74242e51).
+Chose unschedule+reschedule (not direct UPDATE on cron.job) to stay on the repo's
+documented API; jobids therefore changed.
+
+Verified with a cron.job query: new jobids 40 (get-linkedin-posts), 41
+(find-org-of-commentor), 42 (company-lead-finder), 43 (email-finder), 44
+(log-email-to-sheet) — all active=true with the correct webhook UUIDs and schedules.
+All land at 6:00/6:30 AM PHT, inside the 05:50-07:05 keep-warm window.
+
+Updated schedule_webhooks.sql: renamed the two existing blocks with dated notes
+(incl. that jobid 32 had been inactive and was reactivated) and added a new
+"LinkedIn comments-scraper pipeline + Company Lead Finder (added 2026-10-15)" block
+for the three new jobs. Updated as_built.txt: live-cron count 24->29 active daily
+weekday jobs with 0 inactive, added jobids 41-44 to the run-order list, renamed the
+jobid-5 line, removed the "jobid 32 INACTIVE" note, and added a 2026-10-15 changelog
+entry.
+
+Reminded the user of the standing GET/no-auth assumption (if any node is POST or
+header-auth the GET 404s) and that the renamed pipeline jobs and lead-finder were
+NOT test-fired (live automations; left to run on their next schedule). No git
+commands run — user commits/pushes themselves.
+
+--------------------------------------------------------------------------------
+USER:
+/dcp
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Saved this transcript (no redactions needed — no secrets appeared; webhook URLs are
+public GUID-path with no tokens, only the Supabase project ref was shown).
+Updated as_built.txt during the session (live cron inventory + 2026-10-15 changelog).
+CLAUDE.md left unchanged (no new conventions/gotchas — reuses the already-documented
+pg_cron webhook pattern; the "scheduled-but-inactive job" case is operational detail,
+captured in as_built). .gitignore left unchanged (no new sensitive files). Did NOT
+commit or push — the user does that themselves.
+
+================================================================================
+END OF EXPORT
+================================================================================

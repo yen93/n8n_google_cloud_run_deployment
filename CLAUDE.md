@@ -89,6 +89,12 @@ See `DEPLOYMENT.md` for the full runbook and `as_built.txt` for the current inve
      itself fired on time. This silently killed job 14 every run Sep 15-17 2026
      (URL ended `...5c17092 --9:30 AM PH Time`). Put labels in the `--` comment
      line above the `cron.schedule()` call, never inside the url.
+   - A job can be `active=false` and silently never fire — presence in `cron.job`
+     is NOT proof it runs. When auditing/checking schedules, always read the
+     `active` column, not just whether the webhook is listed (found 2026-10-15:
+     `n8n-find-org-of-commentor`, ex-jobid 32, had been sitting inactive). To
+     rename a job, `cron.unschedule(old)` + `cron.schedule(new, ...)` — the
+     reschedule recreates it active; this is also the clean way to reactivate one.
 7. **Keep-warm window: two Cloud Scheduler jobs toggle `min-instances` (added
    2026-09-16).** `n8n-scale-up` (05:50 Mon-Fri Manila) sets min=1,
    `n8n-scale-down` (07:05 Mon-Fri Manila) sets min=0, bracketing the 06:00–06:50

@@ -84,8 +84,12 @@ select cron.schedule('n8n-cold-leads-follow-up', '25 22 * * 0-4', $$
     timeout_milliseconds := 30000);
 $$);
 
--- LinkedIn Comments Scraping POC Enrichment    | 6:30 AM  | 22:30 UTC
-select cron.schedule('n8n-linkedin-comments-enrichment', '30 22 * * 0-4', $$
+-- Get linkedin_posts to be processed          | 6:30 AM  | 22:30 UTC
+--   Renamed 2026-10-15 from 'n8n-linkedin-comments-enrichment' to match the real
+--   n8n workflow name "Get linkedin_posts to be processed" (now jobid 40). Same
+--   webhook, schedule, and always-active. Part of the LinkedIn comments-scraper
+--   pipeline (see n8n-find-org-of-commentor + the comments-scraper jobs below).
+select cron.schedule('n8n-get-linkedin-posts-to-be-processed', '30 22 * * 0-4', $$
   select net.http_get(
     url := 'https://n8n-659687081407.australia-southeast1.run.app/webhook/e7e0b196-e1a4-4340-8af7-c6eb93509e46',
     timeout_milliseconds := 30000);
@@ -207,16 +211,18 @@ select cron.schedule('n8n-cold-leads-notes-4th-followup', '0 23 * * 0-4', $$
 $$);
 
 -- ---------------------------------------------------------------------------
--- Google Sheet Update: LinkedIn Comment Enrichment  (added 2026-09-23)
---   Writes the LinkedIn comment enrichment results to a Google Sheet. Distinct
---   from n8n-linkedin-comments-enrichment (the 6:30 scraping/enrichment run) --
---   this is the sheet-update step. Shares the 22:40 UTC minute with existing jobs;
---   pg_cron fires each named job independently and it's inside the 05:50-07:05
---   Manila keep-warm window. dow 0-4 (Sun-Thu UTC = Mon-Fri PHT), same rule as above.
+-- Find org of commentor  (added 2026-09-23; renamed + reactivated 2026-10-15)
+--   Part of the LinkedIn comments-scraper pipeline. Renamed 2026-10-15 from
+--   'n8n-linkedin-comment-enrichment-sheet-update' to match the real n8n workflow
+--   name "Find org of commentor" (now jobid 41). Was found INACTIVE on 2026-10-15
+--   (active=false, so it hadn't been firing) and REACTIVATED at user request --
+--   the unschedule+reschedule recreates it active. Shares the 22:40 UTC minute
+--   with existing jobs; pg_cron fires each named job independently and it's inside
+--   the 05:50-07:05 Manila keep-warm window. dow 0-4 (Sun-Thu UTC = Mon-Fri PHT).
 -- ---------------------------------------------------------------------------
 
--- Google Sheet Update: LinkedIn Comment Enrichment | 6:40 AM | 22:40 UTC
-select cron.schedule('n8n-linkedin-comment-enrichment-sheet-update', '40 22 * * 0-4', $$
+-- Find org of commentor                        | 6:40 AM  | 22:40 UTC
+select cron.schedule('n8n-find-org-of-commentor', '40 22 * * 0-4', $$
   select net.http_get(
     url := 'https://n8n-659687081407.australia-southeast1.run.app/webhook/d13096b0-03af-400a-8f4c-1b37cdaf8a9b',
     timeout_milliseconds := 30000);
@@ -300,6 +306,39 @@ $$);
 --     url := 'https://n8n-659687081407.australia-southeast1.run.app/webhook/e6ee0878-b326-4155-a9f0-fd826104b473',
 --     timeout_milliseconds := 30000);
 -- $$);
+
+-- ---------------------------------------------------------------------------
+-- LinkedIn comments-scraper pipeline + Company Lead Finder  (added 2026-10-15)
+--   Three webhooks from "151026 new webhooks.txt". The source file labelled all
+--   three "Daily", but scheduled Mon-Fri (dow 0-4) at user request to match the
+--   rest of the stack and stay inside the 05:50-07:05 Manila keep-warm window
+--   (weekday-only; weekend runs would be cold starts). 6:00 AM shares 22:00 UTC
+--   with get-all-ac-deals/insta-story-scraper, 6:30 AM shares 22:30 UTC with the
+--   batch mailers -- pg_cron fires each named job independently, so collisions are
+--   fine. The two comments-scraper jobs join n8n-get-linkedin-posts-to-be-processed
+--   (jobid 40) and n8n-find-org-of-commentor (jobid 41) above in that pipeline.
+-- ---------------------------------------------------------------------------
+
+-- LinkedIn Company Lead Finder                 | 6:00 AM  | 22:00 UTC
+select cron.schedule('n8n-linkedin-company-lead-finder', '0 22 * * 0-4', $$
+  select net.http_get(
+    url := 'https://n8n-659687081407.australia-southeast1.run.app/webhook/e70fe2f8-2d48-4fca-8849-dbafcdff6164',
+    timeout_milliseconds := 30000);
+$$);
+
+-- comments scraper: email finder              | 6:00 AM  | 22:00 UTC
+select cron.schedule('n8n-comments-scraper-email-finder', '0 22 * * 0-4', $$
+  select net.http_get(
+    url := 'https://n8n-659687081407.australia-southeast1.run.app/webhook/5ed8979a-e286-4b3a-b5f8-c9003fb2d3b5',
+    timeout_milliseconds := 30000);
+$$);
+
+-- comments scraper: log email to sheet        | 6:30 AM  | 22:30 UTC
+select cron.schedule('n8n-comments-scraper-log-email-to-sheet', '30 22 * * 0-4', $$
+  select net.http_get(
+    url := 'https://n8n-659687081407.australia-southeast1.run.app/webhook/74242e51-395e-4086-a157-7a3977f31b58',
+    timeout_milliseconds := 30000);
+$$);
 
 -- ---------------------------------------------------------------------------
 -- NOT SCHEDULED (kept here for reference, intentionally NOT live)
