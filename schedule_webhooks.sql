@@ -372,6 +372,46 @@ select cron.schedule('n8n-action-items-automation', '0 0-8 * * 1-5', $$
 $$);
 
 -- ---------------------------------------------------------------------------
+-- Gmail Samples Caching  (added 2026-11-04, jobid 47, file "041126_gmail_samples_caching.txt")
+--   Daily Mon-Fri 6:00 AM Manila. Source file listed a localhost:5678 webhook URL;
+--   rewritten to the Cloud Run Production URL (same /webhook/<id> path) as with every
+--   other job here -- localhost would never reach the deployed container. 6:00 AM
+--   shares 22:00 UTC with get-all-ac-deals / insta-story-scraper / the LinkedIn
+--   6:00 jobs; pg_cron fires each named job independently, and 06:00 is inside the
+--   05:50-07:05 Manila keep-warm window, so no cold start. dow 0-4 (Sun-Thu UTC =
+--   Mon-Fri PHT), same rule as the blocks above.
+-- ---------------------------------------------------------------------------
+
+-- Gmail Samples Caching                        | 6:00 AM  | 22:00 UTC
+select cron.schedule('n8n-gmail-samples-caching', '0 22 * * 0-4', $$
+  select net.http_get(
+    url := 'https://n8n-659687081407.australia-southeast1.run.app/webhook/b35b875a-a6a4-4b3f-aa1f-a1976df0e74f',
+    timeout_milliseconds := 30000);
+$$);
+
+-- ---------------------------------------------------------------------------
+-- Education Sector Batch Mailer  (added 2026-11-13, jobid 48, file
+--   "131126 education sector batch mailer.txt")
+--   A "Batch Mailer" per lead source (education sector), like the batch-mailer
+--   block above, but fires at 7:00 AM Manila (not 6:30). 7:00 AM PHT = 23:00 UTC
+--   prior day, so dow 0-4 (Sun-Thu UTC = Mon-Fri PHT), same as the 07:00 jobs.
+--   Shares the 0 23 UTC minute with jobid 14, n8n-cold-leads-notes-4th-followup,
+--   and n8n-action-items-automation-0700 -- pg_cron fires each named job
+--   independently, so collisions are harmless. 07:00 is at the tail of the
+--   05:50-07:05 Manila keep-warm window, so no cold start.
+--   NOTE: the source file first listed webhook b17ac35b (already live as jobid 36,
+--   n8n-batch-mailer-ai-soc-med-alternate-leads) -- a copy-paste error; corrected
+--   to the distinct dc6155e4 webhook before scheduling.
+-- ---------------------------------------------------------------------------
+
+-- Education Sector Batch Mailer                | 7:00 AM  | 23:00 UTC prior day
+select cron.schedule('n8n-batch-mailer-education-sector', '0 23 * * 0-4', $$
+  select net.http_get(
+    url := 'https://n8n-659687081407.australia-southeast1.run.app/webhook/dc6155e4-0178-4aad-bc0e-fcb3d8f1c6c1',
+    timeout_milliseconds := 30000);
+$$);
+
+-- ---------------------------------------------------------------------------
 -- NOT SCHEDULED (kept here for reference, intentionally NOT live)
 -- ---------------------------------------------------------------------------
 -- n8n-batch-mailer (webhook 18166a62-3c79-4f66-8597-59ff30469cbe) is NOT in the

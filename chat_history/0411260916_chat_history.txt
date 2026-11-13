@@ -1,0 +1,78 @@
+================================================================================
+CHAT HISTORY EXPORT — 2026-11-04
+Session: Scheduled a new n8n webhook ("Gmail Samples Caching") on Supabase
+pg_cron to fire Mon-Fri 6:00 AM Manila, following the project's established
+pg_cron + pg_net webhook convention. Created jobid 47
+(n8n-gmail-samples-caching), verified it active, and recorded it in
+schedule_webhooks.sql.
+================================================================================
+
+--------------------------------------------------------------------------------
+USER:
+"schedule this:" with a path to
+new_webhooks/041126_gmail_samples_caching.txt
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Read the file, which at that point contained:
+  webhook: http://localhost:5678/webhook/b35b875a-a6a4-4b3f-aa1f-a1976df0e74f
+  sched: mon-fri 6am ph time
+
+Recognized this as the recurring pg_cron webhook-scheduling task documented in
+CLAUDE.md. Gathered conventions before acting:
+- Found schedule_webhooks.sql (the canonical record) and read it in full. Every
+  job uses the Cloud Run Production URL
+  (https://n8n-659687081407.australia-southeast1.run.app/webhook/<id>), NOT
+  localhost; a localhost URL would never reach the deployed container.
+- Applied the timezone/day-of-week rules: 6:00 AM Manila = 22:00 UTC the prior
+  day, and because the job fires at 22:xx UTC the PHT weekday is UTC weekday + 1,
+  so Mon-Fri PHT = Sun-Thu UTC = dow 0-4. Cron expression: '0 22 * * 0-4'.
+- 6:00 AM sits inside the 05:50-07:05 Manila keep-warm window, so no cold start;
+  30s timeout set regardless per the async pg_net guidance.
+
+Checked Supabase (project uwsncuowtzydylfabikj) for any existing job using this
+webhook id or matching "gmail" — none found, so no duplicate.
+
+Created the job:
+  select cron.schedule('n8n-gmail-samples-caching', '0 22 * * 0-4', $$
+    select net.http_get(
+      url := 'https://n8n-659687081407.australia-southeast1.run.app/webhook/b35b875a-a6a4-4b3f-aa1f-a1976df0e74f',
+      timeout_milliseconds := 30000);
+  $$);
+Returned jobid 47. Verified via cron.job: jobname n8n-gmail-samples-caching,
+schedule '0 22 * * 0-4', active=true, command pointing at the Cloud Run URL.
+
+Recorded the job in schedule_webhooks.sql with a dated comment block (added
+2026-11-04, jobid 47) above the NOT SCHEDULED section, noting the localhost->
+Cloud Run URL rewrite and the shared 22:00 UTC slot. Did not commit — per the
+project convention the user handles git themselves.
+
+--------------------------------------------------------------------------------
+USER:
+"this is the right webhook:" pointing again to the same file
+new_webhooks/041126_gmail_samples_caching.txt
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Re-read the file; it had been updated to the full Cloud Run Production URL:
+  webhook: https://n8n-659687081407.australia-southeast1.run.app/webhook/b35b875a-a6a4-4b3f-aa1f-a1976df0e74f
+  sched: mon-fri 6am ph time
+
+Confirmed it was the same webhook id and schedule already scheduled, and that the
+URL I had derived (localhost -> Cloud Run) matched the corrected file exactly.
+No change needed — jobid 47 already points at that exact URL. Told the user the
+schedule stands and the first run is tomorrow morning (Nov 5).
+
+--------------------------------------------------------------------------------
+USER:
+/save-chat-history
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Saved this transcript to chat_history/ (this file). Ran the security scan over the
+full conversation; nothing sensitive was present (only a public webhook UUID path,
+which is not a secret), so no redactions.
+
+================================================================================
+END OF EXPORT
+================================================================================

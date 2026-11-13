@@ -1,0 +1,48 @@
+================================================================================
+CHAT HISTORY EXPORT — 2026-11-13
+Session: Scheduled the new "Education Sector Batch Mailer" n8n webhook as a
+Supabase pg_cron job (7 AM PH, Mon-Fri). Caught a duplicate-webhook copy-paste
+error in the source file before scheduling; user corrected it.
+================================================================================
+
+--------------------------------------------------------------------------------
+USER:
+Pointed at new_webhooks/131126 education sector batch mailer.txt (name, webhook
+URL, "7 AM PH Time - mon-fri").
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Read the file and schedule_webhooks.sql. The URL in the file ended in
+/webhook/b17ac35b-... Queried cron.job in Supabase (project uwsncuowtzydylfabikj)
+and found that webhook already live as jobid 36
+(n8n-batch-mailer-ai-soc-med-alternate-leads, 30 22 * * 0-4 = 6:30 AM PH).
+Scheduling it again would have double-fired the wrong workflow, so asked the user
+how to proceed (options: get correct URL / rename+move job 36 / add as-is).
+
+--------------------------------------------------------------------------------
+USER:
+Answered "fixed it. check txt file".
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Re-read the file: URL now /webhook/dc6155e4-0178-4aad-bc0e-fcb3d8f1c6c1.
+Verified via cron.job that dc6155e4 wasn't used by any job. Ran
+cron.schedule('n8n-batch-mailer-education-sector', '0 23 * * 0-4', ...) with
+net.http_get + timeout_milliseconds := 30000. Result: jobid 48, active=true.
+(7:00 AM PHT = 23:00 UTC prior day; dow 0-4 = Sun-Thu UTC = Mon-Fri PHT.)
+Added a matching block (with a note on the corrected webhook ID) to
+schedule_webhooks.sql. Offered a one-off test GET and a reminder to confirm the
+n8n workflow is Active. Nothing committed or pushed.
+
+--------------------------------------------------------------------------------
+USER:
+Ran /dcp (save chat history + update as_built.txt / CLAUDE.md / .gitignore, no git).
+
+--------------------------------------------------------------------------------
+ASSISTANT:
+Saved this transcript, updated as_built.txt with jobid 48, left CLAUDE.md and
+.gitignore unchanged. No git commands run.
+
+================================================================================
+END OF EXPORT
+================================================================================

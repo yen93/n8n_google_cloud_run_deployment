@@ -1,6 +1,6 @@
 ================================================================================
 AS-BUILT — n8n on Google Cloud Run
-Last updated: 2026-10-15
+Last updated: 2026-11-13
 ================================================================================
 
 CONTAINER IMAGE
@@ -109,6 +109,7 @@ AUTOMATIONS / ROUTINES
     06:00 n8n-comments-scraper-email-finder    (jobid 43, 0 22)  [shares 22:00; added 2026-10-15]
     06:30 n8n-comments-scraper-log-email-to-sheet (jobid 44, 30 22) [shares 22:30; added 2026-10-15]
     06:40 n8n-find-org-of-commentor            (jobid 41, 40 22) [reactivated+renamed 2026-10-15; ex-jobid 32, was INACTIVE]
+    07:00 n8n-batch-mailer-education-sector    (jobid 48, 0 23)  [shares 23:00; added 2026-11-13; webhook dc6155e4...]
     (jobid 37 n8n-batch-mailer-manually-listed-insta-leads UNSCHEDULED 2026-10-09)
   Also present but outside the morning block:
     - n8n-closed-threads-processing (jobid 33, `0 22 * * 0` = 06:00 AM Mon PHT only,

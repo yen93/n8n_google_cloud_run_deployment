@@ -1,0 +1,2 @@
+webhook: https://n8n-659687081407.australia-southeast1.run.app/webhook/b35b875a-a6a4-4b3f-aa1f-a1976df0e74f
+sched: mon-fri 6am ph time
